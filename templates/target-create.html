@@ -55,12 +55,26 @@ function showAuth() {
   document.getElementById('authFields').style.display = v === 'none' ? 'none' : 'block';
   document.getElementById('passField').style.display = v === 'bearer' ? 'none' : 'block';
 }
-function addTarget() {
+async function addTarget() {
   const n = document.getElementById('tName').value.trim();
   const u = document.getElementById('tUrl').value.trim();
   if (!n || !u) { alert('Please enter target name and URL.'); return; }
-  alert('Target added successfully!');
-  window.location.href = '/targets';
+  const activeType = document.querySelector('.type-btn.active');
+  const ttype = activeType ? activeType.textContent.trim() : 'Web';
+  const desc  = document.getElementById('tDesc').value.trim();
+  try {
+    const res  = await fetch('/api/targets', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ name: n, url: u, type: ttype, description: desc })
+    });
+    const data = await res.json();
+    if (data.status === 'success') {
+      window.location.href = '/targets';
+    } else {
+      alert('Error: ' + (data.message || 'Could not add target.'));
+    }
+  } catch(e) { alert('Network error: ' + e.message); }
 }
 </script>
 {% endblock %}
