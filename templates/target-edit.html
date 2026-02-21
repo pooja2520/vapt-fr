@@ -2,39 +2,82 @@
 {% block title %}Edit Target - VAPT Scanner Pro{% endblock %}
 {% block extra_css %}<link rel="stylesheet" href="{{ url_for('static', filename='css/targets.css') }}">{% endblock %}
 {% block body %}
-<div id="_main" style="padding-top:56px;margin-left:220px;min-height:100vh;">
+<div id="_main" style="padding-top:56px;min-height:100vh;">
 <div class="content">
   <a href="/targets/{{ target_id }}/view" class="back-a"><i class="fa-solid fa-arrow-left"></i> Back to Target</a>
   <div class="pt"><h1><i class="fa-solid fa-crosshairs"></i> Edit Target</h1><p>Update target configuration</p></div>
   <div class="card" style="max-width:680px;">
     <div class="cb">
-      <div class="fg"><label>Target Name <span style="color:var(--red)">*</span></label><input type="text" value="Production Web App"></div>
-      <div class="fg"><label>URL / IP Address <span style="color:var(--red)">*</span></label><input type="text" value="https://app.example.com"></div>
+      <div class="fg"><label>Target Name <span style="color:var(--red)">*</span></label><input type="text" id="tName" placeholder="e.g. Production Web App"></div>
+      <div class="fg"><label>URL / IP Address <span style="color:var(--red)">*</span></label><input type="text" id="tUrl" placeholder="e.g. https://app.example.com"></div>
       <div class="fg">
         <label>Target Type</label>
         <div class="type-btns">
-          <button class="type-btn active" onclick="selType(this)"><i class="fa-solid fa-globe"></i> Web</button>
-          <button class="type-btn" onclick="selType(this)"><i class="fa-solid fa-code"></i> API</button>
-          <button class="type-btn" onclick="selType(this)"><i class="fa-solid fa-wifi"></i> IP</button>
+          <button class="type-btn active" id="typeWeb" onclick="selType(this)"><i class="fa-solid fa-globe"></i> Web</button>
+          <button class="type-btn" id="typeApi" onclick="selType(this)"><i class="fa-solid fa-code"></i> API</button>
+          <button class="type-btn" id="typeIp"  onclick="selType(this)"><i class="fa-solid fa-wifi"></i> IP</button>
         </div>
       </div>
-      <div class="fg"><label>Description</label><textarea>Main production application serving end users.</textarea></div>
-      <div class="fg"><label>Authentication</label>
-        <select><option value="none">No Authentication</option><option value="basic">HTTP Basic</option><option value="form">Form-based</option><option value="bearer">Bearer Token</option></select>
-      </div>
+      <div class="fg"><label>Description</label><textarea id="tDesc" placeholder="Optional description..."></textarea></div>
       <div style="display:flex;gap:.625rem;">
         <button class="btn btn-p" onclick="save()"><i class="fa-regular fa-floppy-disk"></i> Save Changes</button>
         <a href="/targets/{{ target_id }}/view" class="btn btn-o">Cancel</a>
       </div>
     </div>
   </div>
-</div>
-</div>
+</div></div>
 {% endblock %}
 {% block scripts %}
 <script>
 initLayout('/targets');
-function selType(b) { document.querySelectorAll('.type-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); }
-function save() { alert('Changes saved!'); window.location.href = '/targets/{{ target_id }}/view'; }
+const TARGET_ID = {{ target_id }};
+
+function selType(b) {
+  document.querySelectorAll('.type-btn').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+}
+
+// Load existing data
+async function loadData() {
+  try {
+    const res  = await fetch(`/api/targets/${TARGET_ID}`);
+    const data = await res.json();
+    if (data.status !== 'ok') return;
+    const t = data.target;
+    document.getElementById('tName').value = t.name || '';
+    document.getElementById('tUrl').value  = t.url  || '';
+    document.getElementById('tDesc').value = t.description || '';
+    // Set active type button
+    const ttype = (t.type||'Web').toLowerCase();
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+    if (ttype === 'api') document.getElementById('typeApi').classList.add('active');
+    else if (ttype === 'ip') document.getElementById('typeIp').classList.add('active');
+    else document.getElementById('typeWeb').classList.add('active');
+  } catch(e) { console.error(e); }
+}
+
+async function save() {
+  const n = document.getElementById('tName').value.trim();
+  const u = document.getElementById('tUrl').value.trim();
+  if (!n || !u) { alert('Name and URL are required.'); return; }
+  const activeType = document.querySelector('.type-btn.active');
+  const ttype = activeType ? activeType.textContent.trim() : 'Web';
+  const desc  = document.getElementById('tDesc').value.trim();
+  try {
+    const res  = await fetch(`/api/targets/${TARGET_ID}`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ name: n, url: u, type: ttype, description: desc })
+    });
+    const data = await res.json();
+    if (data.status === 'success') {
+      window.location.href = '/targets/{{ target_id }}/view';
+    } else {
+      alert('Error: ' + (data.message || 'Could not save.'));
+    }
+  } catch(e) { alert('Network error: ' + e.message); }
+}
+
+loadData();
 </script>
 {% endblock %}
