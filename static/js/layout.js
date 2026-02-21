@@ -60,6 +60,9 @@
         if (mEl) {
             mEl.classList.add('main');
             mEl.id = 'main';
+            // Set initial margin explicitly so collapse toggle can override it
+            mEl.style.marginLeft = '220px';
+            mEl.style.transition = 'margin-left 0.25s ease';
         }
     };
 
@@ -70,7 +73,12 @@
         const i = document.getElementById('cbI');
         s.classList.toggle('col');
         h.classList.toggle('col');
-        if (m) m.classList.toggle('col');
+        if (m) {
+            m.classList.toggle('col');
+            // Directly set margin so it works even with inline styles on the element
+            const collapsed = s.classList.contains('col');
+            m.style.marginLeft = collapsed ? '60px' : '220px';
+        }
         i.className = s.classList.contains('col') ? 'fa-solid fa-chevron-right' : 'fa-solid fa-chevron-left';
     };
 
