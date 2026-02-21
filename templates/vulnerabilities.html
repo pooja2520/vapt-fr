@@ -60,6 +60,10 @@
 .filter-row select{padding:.475rem .75rem;border:1.5px solid var(--border);border-radius:8px;font-size:.8rem;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;background:#fff;cursor:pointer;}
 .filter-row select:focus{border-color:var(--blue);}
 
+/* Severity badge overrides — Low (teal) vs Info (slate) */
+.bsev-low{display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .55rem;border-radius:6px;font-size:.72rem;font-weight:700;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;}
+.bsev-info{display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .55rem;border-radius:6px;font-size:.72rem;font-weight:700;background:#f1f5f9;color:#64748b;border:1px solid #cbd5e1;}
+
 /* Report dl button */
 .dl-report{display:inline-flex;align-items:center;gap:.35rem;padding:.35rem .75rem;border-radius:8px;font-size:.75rem;font-weight:600;border:1.5px solid var(--border);background:#fff;cursor:pointer;color:var(--text);text-decoration:none;transition:all .15s;}
 .dl-report:hover{border-color:var(--blue);color:var(--blue);}
@@ -164,8 +168,20 @@ let pieChart = null;
 let barChart = null;
 
 /* ─────────── SEVERITY HELPERS ─────────── */
-function sevClass(s){s=(s||'').toLowerCase();return s==='critical'?'bc':s==='high'?'bh':s==='medium'?'bm':'bl';}
-function sevIcon(s){return(s||'').toLowerCase()==='low'||(s||'').toLowerCase()==='info'?'fa-shield-halved':'fa-triangle-exclamation';}
+function sevClass(s){
+  s=(s||'').toLowerCase();
+  if(s==='critical') return 'bc';
+  if(s==='high')     return 'bh';
+  if(s==='medium')   return 'bm';
+  if(s==='low')      return 'bsev-low';
+  return 'bsev-info';
+}
+function sevIcon(s){
+  s=(s||'').toLowerCase();
+  if(s==='critical'||s==='high'||s==='medium') return 'fa-triangle-exclamation';
+  if(s==='low') return 'fa-arrow-down';
+  return 'fa-shield-halved';
+}
 function statClass(s){s=(s||'').toLowerCase();if(s==='vulnerable')return'bc';if(s==='fixed')return'bf';if(s==='complete'||s==='success'||s==='secure')return'bac';return'bop';}
 function statIcon(s){s=(s||'').toLowerCase();if(s==='fixed')return'fa-circle-check';if(s==='vulnerable')return'fa-circle-exclamation';return'fa-circle-check';}
 
