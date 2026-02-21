@@ -1,53 +1,165 @@
 {% extends "base.html" %}
 {% block title %}Target View - VAPT Scanner Pro{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="{{ url_for('static', filename='css/targets.css') }}">{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{{ url_for('static', filename='css/targets.css') }}">
+<style>
+.scan-hist-row { display:grid; grid-template-columns:2rem 1fr auto auto auto auto auto; align-items:center; gap:.5rem; padding:.55rem .875rem; border-bottom:1px solid var(--border); font-size:.78rem; }
+.scan-hist-row:last-child { border-bottom:none; }
+.scan-hist-row:nth-child(even) { background:#f9fafb; }
+.scan-num { font-weight:700; color:var(--text-muted); text-align:center; }
+.scan-time-label { color:var(--text); font-weight:600; }
+.scan-latest-badge { display:inline-flex;align-items:center;gap:.25rem;padding:.15rem .5rem;background:#eff6ff;color:#2563eb;border:1px solid #93c5fd;border-radius:5px;font-size:.68rem;font-weight:700; }
+.no-data { text-align:center;padding:2rem;color:var(--text-muted);font-size:.825rem; }
+.pulse { display:inline-block;width:8px;height:8px;background:#22c55e;border-radius:50%;animation:pulse 1.5s infinite;margin-right:.3rem; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.3)} }
+.vuln-sum { display:grid; grid-template-columns:repeat(5,1fr); gap:.75rem; }
+</style>
+{% endblock %}
 {% block body %}
-<div id="_main" style="padding-top:56px;margin-left:220px;min-height:100vh;">
+<div id="_main" style="padding-top:56px;min-height:100vh;">
 <div class="content">
   <a href="/targets" class="back-a"><i class="fa-solid fa-arrow-left"></i> Back to Targets</a>
   <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.625rem;">
     <div>
-      <h1 style="font-family:'Space Grotesk',sans-serif;font-size:1.375rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:.4rem;"><i class="fa-solid fa-crosshairs" style="color:var(--blue)"></i> Production Web App</h1>
-      <p style="font-size:.78rem;color:var(--text-muted);">https://app.example.com</p>
+      <h1 style="font-family:'Space Grotesk',sans-serif;font-size:1.375rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:.4rem;">
+        <i class="fa-solid fa-crosshairs" style="color:var(--blue)"></i><span id="tName">Loading…</span>
+      </h1>
+      <p id="tUrl" style="font-size:.78rem;color:var(--text-muted);">—</p>
     </div>
-    <div style="display:flex;gap:.5rem;">
+    <div style="display:flex;gap:.5rem;align-items:center;">
+      <span style="font-size:.7rem;color:var(--text-muted);"><span class="pulse"></span>Live</span>
       <a href="/targets/{{ target_id }}/edit" class="btn btn-o"><i class="fa-regular fa-pen-to-square"></i> Edit</a>
       <a href="/scanning" class="btn btn-p"><i class="fa-solid fa-play"></i> Start Scan</a>
     </div>
   </div>
+
   <div class="meta-grid">
-    <div class="meta-card"><small>Type</small><p><span class="bx bwb"><i class="fa-solid fa-globe"></i> Web</span></p></div>
-    <div class="meta-card"><small>Status</small><p><span class="bx bac"><i class="fa-solid fa-circle-check"></i> Active</span></p></div>
-    <div class="meta-card"><small>Last Scan</small><p style="font-size:.875rem;font-weight:600;">2024-01-15</p></div>
-    <div class="meta-card"><small>Total Vulnerabilities</small><h2 style="font-family:'Space Grotesk',sans-serif;font-size:1.75rem;font-weight:700;color:var(--text);">27</h2></div>
+    <div class="meta-card"><small>Type</small><p id="mType">—</p></div>
+    <div class="meta-card"><small>Status</small><p id="mStatus">—</p></div>
+    <div class="meta-card"><small>Last Scan</small><p id="mLastScan" style="font-size:.82rem;font-weight:600;">—</p></div>
+    <div class="meta-card"><small>Total Scans Run</small><h2 id="mScanCount" style="font-family:'Space Grotesk',sans-serif;font-size:1.75rem;font-weight:700;color:var(--blue);">0</h2></div>
   </div>
-  <div class="card"><div class="ch"><i class="fa-solid fa-shield-halved"></i> Target Details</div><div class="cb"><p style="font-size:.875rem;color:var(--text-muted);">Main production application serving end users.</p></div></div>
+
   <div class="card">
-    <div class="ch"><i class="fa-solid fa-triangle-exclamation"></i> Vulnerability Summary</div>
+    <div class="ch"><i class="fa-solid fa-triangle-exclamation"></i> Vulnerability Summary <small style="font-weight:400;font-size:.72rem;margin-left:.5rem;color:rgba(255,255,255,.8)">latest scan</small></div>
     <div class="cb">
       <div class="vuln-sum">
-        <div class="vs"><strong style="color:var(--red)">2</strong><small>Critical</small></div>
-        <div class="vs"><strong style="color:var(--orange)">5</strong><small>High</small></div>
-        <div class="vs"><strong style="color:var(--yellow)">8</strong><small>Medium</small></div>
-        <div class="vs"><strong style="color:var(--green)">12</strong><small>Low</small></div>
+        <div class="vs"><strong id="vc-crit" style="color:#be123c">0</strong><small>Critical</small></div>
+        <div class="vs"><strong id="vc-high" style="color:#c2410c">0</strong><small>High</small></div>
+        <div class="vs"><strong id="vc-med"  style="color:#a16207">0</strong><small>Medium</small></div>
+        <div class="vs"><strong id="vc-low"  style="color:#16a34a">0</strong><small>Low</small></div>
+        <div class="vs"><strong id="vc-total" style="color:var(--blue)">0</strong><small>Total</small></div>
       </div>
     </div>
   </div>
+
   <div class="card">
-    <div class="ch"><i class="fa-solid fa-bug"></i> Recent Vulnerabilities</div>
+    <div class="ch"><i class="fa-solid fa-shield-halved"></i> Target Details</div>
+    <div class="cb"><p id="tDesc" style="font-size:.875rem;color:var(--text-muted);">—</p></div>
+  </div>
+
+  <div class="card">
+    <div class="ch"><i class="fa-solid fa-clock-rotate-left"></i> Scan History</div>
+    <div id="scanHistoryBody">
+      <div class="no-data"><i class="fa-solid fa-clock-rotate-left" style="font-size:1.5rem;display:block;margin-bottom:.4rem;color:var(--border)"></i>No scans yet.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ch"><i class="fa-solid fa-bug"></i> Recent Vulnerabilities <small style="font-weight:400;font-size:.72rem;margin-left:.5rem;color:rgba(255,255,255,.8)">latest 10</small></div>
     <div class="cb" style="padding:0;overflow-x:auto;">
       <table class="dt">
-        <thead><tr><th>Vulnerability</th><th>Severity</th><th>OWASP</th><th>Status</th><th>Actions</th></tr></thead>
-        <tbody>
-          <tr><td><strong>SQL Injection in Login Form</strong><br><small style="color:var(--text-muted)">/api/auth/login</small></td><td><span class="bx bc"><i class="fa-solid fa-triangle-exclamation"></i> Critical</span></td><td><span style="font-size:.75rem;color:var(--text-muted)">A03:2021</span></td><td><span class="bx bop"><i class="fa-solid fa-circle-exclamation"></i> Open</span></td><td><a href="/vulnerabilities/1" class="btn btn-o btn-s"><i class="fa-regular fa-eye"></i> View</a></td></tr>
-          <tr><td><strong>Reflected XSS in Search</strong><br><small style="color:var(--text-muted)">/search?q=</small></td><td><span class="bx bh"><i class="fa-solid fa-triangle-exclamation"></i> High</span></td><td><span style="font-size:.75rem;color:var(--text-muted)">A03:2021</span></td><td><span class="bx bop"><i class="fa-solid fa-circle-exclamation"></i> Open</span></td><td><a href="/vulnerabilities/2" class="btn btn-o btn-s"><i class="fa-regular fa-eye"></i> View</a></td></tr>
-          <tr><td><strong>Missing CSP Header</strong><br><small style="color:var(--text-muted)">/</small></td><td><span class="bx bm"><i class="fa-solid fa-triangle-exclamation"></i> Medium</span></td><td><span style="font-size:.75rem;color:var(--text-muted)">A05:2021</span></td><td><span class="bx bop"><i class="fa-solid fa-circle-exclamation"></i> Open</span></td><td><a href="/vulnerabilities/3" class="btn btn-o btn-s"><i class="fa-regular fa-eye"></i> View</a></td></tr>
-        </tbody>
+        <thead><tr><th>Vulnerability</th><th>Severity</th><th>Status</th><th>Path</th><th>Actions</th></tr></thead>
+        <tbody id="vulnBody"><tr><td colspan="5" class="no-data">No data yet.</td></tr></tbody>
       </table>
     </div>
-    <div style="padding:.75rem 1rem;text-align:right;border-top:1px solid var(--border);"><a href="/vulnerabilities" class="btn btn-o btn-s">View All <i class="fa-solid fa-arrow-right"></i></a></div>
+    <div style="padding:.75rem 1rem;text-align:right;border-top:1px solid var(--border);">
+      <a href="/vulnerabilities" class="btn btn-o btn-s">View All <i class="fa-solid fa-arrow-right"></i></a>
+    </div>
   </div>
-</div>
-</div>
+</div></div>
 {% endblock %}
-{% block scripts %}<script>initLayout('/targets');</script>{% endblock %}
+{% block scripts %}
+<script>
+initLayout('/targets');
+const TARGET_ID = {{ target_id }};
+
+function sevBadge(s){
+  s=(s||'').toLowerCase();
+  const m={critical:['bc','fa-triangle-exclamation','Critical'],high:['bh','fa-triangle-exclamation','High'],medium:['bm','fa-triangle-exclamation','Medium'],low:['bl','fa-arrow-down','Low']};
+  const [c,i,l]=m[s]||['bsev-info','fa-shield-halved',s||'Info'];
+  return `<span class="bx ${c}"><i class="fa-solid ${i}"></i> ${l}</span>`;
+}
+function statusBadge(s){
+  s=(s||'').toLowerCase();
+  if(s==='vulnerable') return `<span class="bx bop"><i class="fa-solid fa-circle-exclamation"></i> Vulnerable</span>`;
+  if(s==='secure')     return `<span class="bx bac"><i class="fa-solid fa-circle-check"></i> Secure</span>`;
+  return `<span class="bx" style="background:#f3f4f6;color:#374151;border:1px solid #d1d5db;">${s||'—'}</span>`;
+}
+function typeIcon(t){t=(t||'').toLowerCase();return t==='api'?'fa-code':t==='ip'?'fa-wifi':'fa-globe';}
+function typeClass(t){t=(t||'').toLowerCase();return t==='api'?'bap':t==='ip'?'bip':'bwb';}
+
+async function loadTarget(){
+  try{
+    const res=await fetch(`/api/targets/${TARGET_ID}`);
+    const data=await res.json();
+    if(data.status!=='ok') return;
+    const t=data.target;
+
+    document.getElementById('tName').textContent=t.name||'—';
+    document.getElementById('tUrl').textContent=t.url||'—';
+    document.getElementById('tDesc').textContent=t.description||'No description provided.';
+
+    const tc=typeClass(t.type),ti=typeIcon(t.type);
+    document.getElementById('mType').innerHTML=`<span class="bx ${tc}"><i class="fa-solid ${ti}"></i> ${t.type||'Web'}</span>`;
+    const sc=(t.status==='Active')?'bac':'bpd', si=(t.status==='Active')?'fa-circle-check':'fa-clock';
+    document.getElementById('mStatus').innerHTML=`<span class="bx ${sc}"><i class="fa-solid ${si}"></i> ${t.status||'Active'}</span>`;
+    document.getElementById('mLastScan').textContent=t.last_scan||'Never';
+    document.getElementById('mScanCount').textContent=t.scan_count||0;
+
+    const vc=t.vuln_counts||{};
+    document.getElementById('vc-crit').textContent=vc.critical||0;
+    document.getElementById('vc-high').textContent=vc.high||0;
+    document.getElementById('vc-med').textContent=vc.medium||0;
+    document.getElementById('vc-low').textContent=vc.low||0;
+    document.getElementById('vc-total').textContent=t.total_vulns||0;
+
+    // Scan history
+    const hist=t.scan_history||[];
+    const histEl=document.getElementById('scanHistoryBody');
+    if(!hist.length){
+      histEl.innerHTML=`<div class="no-data"><i class="fa-solid fa-clock-rotate-left" style="font-size:1.5rem;display:block;margin-bottom:.4rem;color:var(--border)"></i>No scans run yet for this target.</div>`;
+    } else {
+      histEl.innerHTML=hist.map((h,i)=>`
+        <div class="scan-hist-row">
+          <span class="scan-num">#${hist.length-i}</span>
+          <span class="scan-time-label"><i class="fa-regular fa-clock" style="color:var(--text-muted);margin-right:.3rem;"></i>${h.scan_time}</span>
+          ${i===0?'<span class="scan-latest-badge"><i class="fa-solid fa-star"></i> Latest</span>':'<span></span>'}
+          <span class="bx bc" style="min-width:2.5rem;justify-content:center;">${h.critical}C</span>
+          <span class="bx bh" style="min-width:2.5rem;justify-content:center;">${h.high}H</span>
+          <span class="bx bm" style="min-width:2.5rem;justify-content:center;">${h.medium}M</span>
+          <span style="font-size:.75rem;color:var(--text-muted);">${h.total} total</span>
+        </div>`).join('');
+    }
+
+    // Recent vulns
+    const vulns=t.recent_vulns||[];
+    const tbody=document.getElementById('vulnBody');
+    if(!vulns.length){
+      tbody.innerHTML=`<tr><td colspan="5" class="no-data" style="padding:1.5rem;">No vulnerabilities recorded yet.</td></tr>`;
+    } else {
+      tbody.innerHTML=vulns.map(v=>`
+        <tr>
+          <td><strong>${v.test}</strong><br><small style="color:var(--text-muted);">${(v.finding||'').slice(0,90)}${v.finding&&v.finding.length>90?'…':''}</small></td>
+          <td>${sevBadge(v.severity)}</td>
+          <td>${statusBadge(v.status)}</td>
+          <td><small style="color:var(--text-muted);word-break:break-all;">${(v.path&&v.path!=='N/A')?v.path:'—'}</small></td>
+          <td><a href="/vulnerabilities" class="btn btn-o btn-s"><i class="fa-regular fa-eye"></i></a></td>
+        </tr>`).join('');
+    }
+  } catch(e){ console.error('loadTarget error:',e); }
+}
+
+loadTarget();
+setInterval(loadTarget, 8000);
+</script>
+{% endblock %}
