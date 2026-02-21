@@ -523,6 +523,11 @@ window.addEventListener('DOMContentLoaded', () => { restoreStateOnLoad(); });
 
 // ─── On page load: restore logs + results if scan already ran ─
 async function restoreStateOnLoad() {
+    // If user clicked "New Scan", skip restore for this page load
+    if (sessionStorage.getItem('vapt_new_scan') === '1') {
+        sessionStorage.removeItem('vapt_new_scan');
+        return;
+    }
     try {
         const r    = await fetch('/api/scan-logs');
         const data = await r.json();
@@ -815,7 +820,46 @@ function setPhaseActive(phase) {
 }
 
 // ─── Misc ────────────────────────────────────────────────────
-function handleNewScan()  { location.reload(); }
+function handleNewScan() {
+    // Mark that we're doing a fresh start — suppress restoreStateOnLoad
+    sessionStorage.setItem('vapt_new_scan', '1');
+
+    // Close any open SSE stream
+    if (eventSource) { eventSource.close(); eventSource = null; }
+    isScanning   = false;
+    crawledPaths = [];
+
+    // Reset UI — hide results, coverage, logs
+    resultsSection.style.display      = 'none';
+    testCoverageSection.style.display = 'none';
+    resultsContainer.innerHTML        = '';
+    clearLog();
+    resetProgress();
+
+    // Reset log panel placeholder
+    if (scanLog) {
+        const ph = document.createElement('span');
+        ph.className = 'log-info';
+        ph.style.color = '#64748b';
+        ph.textContent = 'No scan logs yet. Configure and start a scan.';
+        scanLog.appendChild(ph);
+    }
+
+    // Hide New Scan, re-enable Start Scan
+    newScanBtn.style.display = 'none';
+    updateScanButton(false);
+    hideError();
+    hideProgress();
+    hideAuthSuccess();
+
+    // Clear the target input & reset auth
+    targetInput.value  = '';
+    loginType.value    = 'none';
+    handleLoginTypeChange();
+
+    // Scroll back to top of page
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 function handleDownload() { window.location.href = '/download'; }
 
 function updateScanButton(scanning) {
