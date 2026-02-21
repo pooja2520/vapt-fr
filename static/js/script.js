@@ -1,0 +1,838 @@
+// // DOM Elements
+// const targetInput = document.getElementById('targetInput');
+// const loginType = document.getElementById('loginType');
+// const scanBtn = document.getElementById('scanBtn');
+// const testAuthBtn = document.getElementById('testAuthBtn');
+// const btnIcon = document.getElementById('btnIcon');
+// const btnText = document.getElementById('btnText');
+// const newScanBtn = document.getElementById('newScanBtn');
+// const errorMessage = document.getElementById('errorMessage');
+// const errorText = document.getElementById('errorText');
+// const authSuccessMessage = document.getElementById('authSuccessMessage');
+// const authSuccessText = document.getElementById('authSuccessText');
+// const progressMessage = document.getElementById('progressMessage');
+// const progressText = document.getElementById('progressText');
+// const testCoverageSection = document.getElementById('testCoverageSection');
+// const resultsSection = document.getElementById('resultsSection');
+// const resultsContainer = document.getElementById('resultsContainer');
+// const downloadBtn = document.getElementById('downloadBtn');
+
+// // Auth field containers
+// const basicAuthFields = document.getElementById('basicAuthFields');
+// const formAuthFields = document.getElementById('formAuthFields');
+
+// // State
+// let isScanning = false;
+// let isAuthenticated = false;
+// let eventSource = null;
+// let crawledPaths = [];
+
+// // Event Listeners
+// scanBtn.addEventListener('click', handleScan);
+// testAuthBtn.addEventListener('click', handleTestAuth);
+// newScanBtn.addEventListener('click', handleNewScan);
+// downloadBtn.addEventListener('click', handleDownload);
+// loginType.addEventListener('change', handleLoginTypeChange);
+
+// targetInput.addEventListener('keypress', function(e) {
+//     if (e.key === 'Enter' && !isScanning) {
+//         handleScan();
+//     }
+// });
+
+// // Handle Login Type Change
+// function handleLoginTypeChange() {
+//     const type = loginType.value;
+    
+//     // Hide all auth fields
+//     basicAuthFields.style.display = 'none';
+//     formAuthFields.style.display = 'none';
+//     testAuthBtn.style.display = 'none';
+    
+//     // Reset authentication state
+//     isAuthenticated = false;
+//     hideAuthSuccess();
+    
+//     // Show relevant fields
+//     if (type === 'basic') {
+//         basicAuthFields.style.display = 'block';
+//         testAuthBtn.style.display = 'inline-flex';
+//     } else if (type === 'form') {
+//         formAuthFields.style.display = 'block';
+//         testAuthBtn.style.display = 'inline-flex';
+//     }
+// }
+
+// // Handle Test Authentication
+// async function handleTestAuth() {
+//     const target = targetInput.value.trim();
+//     const type = loginType.value;
+    
+//     if (!target) {
+//         showError('Please enter a target URL first');
+//         return;
+//     }
+    
+//     if (type === 'none') {
+//         showError('Please select an authentication method');
+//         return;
+//     }
+    
+//     hideError();
+//     hideAuthSuccess();
+//     showProgress('🔍 Testing authentication...');
+    
+//     try {
+//         const authData = collectAuthData();
+        
+//         const response = await fetch('/test-auth', {
+//             method: 'POST',
+//             headers: {
+//                 'Content-Type': 'application/json',
+//             },
+//             body: JSON.stringify({
+//                 target: target,
+//                 auth_type: type,
+//                 auth_data: authData
+//             }),
+//         });
+        
+//         const result = await response.json();
+        
+//         hideProgress();
+        
+//         if (result.status === 'success') {
+//             isAuthenticated = true;
+//             showAuthSuccess(result.message);
+//         } else {
+//             showError(result.message);
+//         }
+//     } catch (error) {
+//         hideProgress();
+//         showError('Authentication test failed: ' + error.message);
+//     }
+// }
+
+// // Collect Auth Data
+// function collectAuthData() {
+//     const type = loginType.value;
+//     const authData = {};
+    
+//     if (type === 'basic') {
+//         authData.username = document.getElementById('basicUsername').value.trim();
+//         authData.password = document.getElementById('basicPassword').value.trim();
+//     } else if (type === 'form') {
+//         authData.login_url = document.getElementById('formLoginUrl').value.trim();
+//         authData.username = document.getElementById('formUsername').value.trim();
+//         authData.password = document.getElementById('formPassword').value.trim();
+//         authData.username_field = document.getElementById('formUsernameField').value.trim() || 'username';
+//         authData.password_field = document.getElementById('formPasswordField').value.trim() || 'password';
+//         authData.success_indicator = document.getElementById('formSuccessIndicator').value.trim();
+//     }
+    
+//     return authData;
+// }
+
+// // Handle Scan
+// async function handleScan() {
+//     const target = targetInput.value.trim();
+    
+//     if (!target) {
+//         showError('Please enter a target URL or IP address');
+//         return;
+//     }
+    
+//     hideError();
+//     hideAuthSuccess();
+    
+//     isScanning = true;
+//     crawledPaths = [];
+//     updateScanButton(true);
+    
+//     // Hide results and test coverage
+//     resultsSection.style.display = 'none';
+//     testCoverageSection.style.display = 'none';
+    
+//     showProgress('🚀 Initializing scan...');
+    
+//     try {
+//         const authData = collectAuthData();
+        
+//         // Start the scan
+//         const response = await fetch('/scan', {
+//             method: 'POST',
+//             headers: {
+//                 'Content-Type': 'application/json',
+//             },
+//             body: JSON.stringify({
+//                 target: target,
+//                 auth_type: loginType.value,
+//                 auth_data: authData,
+//                 owasp_enabled: true
+//             }),
+//         });
+        
+//         const result = await response.json();
+        
+//         if (result.status === 'started') {
+//             // Connect to Server-Sent Events for real-time updates
+//             connectToProgressStream();
+//         } else {
+//             handleScanError(result.message || 'Scan failed to start');
+//         }
+//     } catch (error) {
+//         handleScanError('Scan request failed: ' + error.message);
+//     }
+// }
+
+// // Connect to Server-Sent Events stream
+// function connectToProgressStream() {
+//     if (eventSource) {
+//         eventSource.close();
+//     }
+    
+//     eventSource = new EventSource('/scan-progress');
+    
+//     eventSource.onmessage = function(event) {
+//         try {
+//             const data = JSON.parse(event.data);
+//             handleProgressUpdate(data);
+//         } catch (error) {
+//             console.error('Error parsing progress update:', error);
+//         }
+//     };
+    
+//     eventSource.onerror = function(error) {
+//         console.error('EventSource error:', error);
+//         eventSource.close();
+        
+//         // Poll for scan status
+//         setTimeout(pollScanStatus, 1000);
+//     };
+// }
+
+// // Handle Progress Updates
+// function handleProgressUpdate(data) {
+//     switch (data.type) {
+//         case 'phase':
+//             showProgress(`📋 Phase ${data.phase}: ${data.name}`);
+//             break;
+            
+//         case 'crawl_start':
+//             showProgress(`🕷️ Starting web crawler (max ${data.max_pages} pages)...`);
+//             break;
+            
+//         case 'crawling':
+//             crawledPaths.push(data.url);
+//             showProgress(`🕷️ Crawling: ${data.url}<br><small>Page ${data.count} of ${data.total}</small>`);
+//             break;
+            
+//         case 'crawl_complete':
+//             showProgress(`✅ Crawling complete! Discovered ${data.total_paths} paths from ${data.pages_crawled} pages`);
+//             break;
+            
+//         case 'complete':
+//             // Scan complete, fetch results
+//             eventSource.close();
+//             fetchScanResults();
+//             break;
+            
+//         case 'heartbeat':
+//             // Just keep connection alive
+//             break;
+//     }
+// }
+
+// // Poll for scan status
+// async function pollScanStatus() {
+//     if (!isScanning) return;
+    
+//     try {
+//         const response = await fetch('/scan-status');
+//         const result = await response.json();
+        
+//         if (result.status === 'running') {
+//             setTimeout(pollScanStatus, 2000);
+//         } else if (result.status === 'success') {
+//             handleScanComplete(result);
+//         } else if (result.status === 'error') {
+//             handleScanError(result.message);
+//         } else {
+//             setTimeout(pollScanStatus, 2000);
+//         }
+//     } catch (error) {
+//         console.error('Error polling scan status:', error);
+//         setTimeout(pollScanStatus, 2000);
+//     }
+// }
+
+// // Fetch scan results
+// async function fetchScanResults() {
+//     showProgress('📊 Fetching results...');
+    
+//     try {
+//         const response = await fetch('/scan-status');
+//         const result = await response.json();
+        
+//         if (result.status === 'success') {
+//             handleScanComplete(result);
+//         } else if (result.status === 'error') {
+//             handleScanError(result.message);
+//         } else {
+//             // Still running, poll again
+//             setTimeout(fetchScanResults, 1000);
+//         }
+//     } catch (error) {
+//         handleScanError('Failed to fetch results: ' + error.message);
+//     }
+// }
+
+// // Handle Scan Complete
+// function handleScanComplete(result) {
+//     isScanning = false;
+//     updateScanButton(false);
+//     hideProgress();
+    
+//     // Show test coverage
+//     testCoverageSection.style.display = 'block';
+    
+//     // Display results
+//     displayResults(result.results);
+    
+//     // Show results section
+//     resultsSection.style.display = 'block';
+    
+//     // Scroll to results
+//     resultsSection.scrollIntoView({ behavior: 'smooth' });
+// }
+
+// // Handle Scan Error
+// function handleScanError(message) {
+//     isScanning = false;
+//     updateScanButton(false);
+//     hideProgress();
+//     showError(message);
+    
+//     if (eventSource) {
+//         eventSource.close();
+//     }
+// }
+
+// // Display Results
+// function displayResults(results) {
+//     resultsContainer.innerHTML = '';
+    
+//     if (!results || results.length === 0) {
+//         resultsContainer.innerHTML = '<p>No security issues found.</p>';
+//         return;
+//     }
+    
+//     results.forEach((result, index) => {
+//         const resultItem = createResultElement(result, index);
+//         resultsContainer.appendChild(resultItem);
+//     });
+// }
+
+// // Create Result Element
+// function createResultElement(result, index) {
+//     const div = document.createElement('div');
+//     div.className = `result-item severity-${result.Severity.toLowerCase()}`;
+//     div.dataset.index = index;
+    
+//     const severityClass = result.Severity.toLowerCase();
+//     const statusClass = result.Status.toLowerCase().replace(' ', '-');
+    
+//     // Only make clickable if has remediation info
+//     const hasDetails = result.Remediation && result.Remediation !== 'N/A';
+//     if (hasDetails) {
+//         div.style.cursor = 'pointer';
+//         div.addEventListener('click', () => toggleDetails(div, result));
+//     }
+    
+//     div.innerHTML = `
+//         <div class="result-content">
+//             <div class="result-test">
+//                 <span>${result.Test}</span>
+//                 ${hasDetails ? '<span class="expand-icon">▼</span>' : ''}
+//                 <span class="badge status-${statusClass} status-badge">${result.Status}</span>
+//             </div>
+//             <div class="result-finding">${result.Finding}</div>
+//             ${result['Vulnerable Path'] !== 'N/A' ? `
+//                 <div class="result-finding" style="margin-top: 8px;">
+//                     <strong>Affected Path(s):</strong> ${result['Vulnerable Path']}
+//                 </div>
+//             ` : ''}
+//         </div>
+//     `;
+    
+//     return div;
+// }
+
+// // Toggle Details
+// function toggleDetails(element, result) {
+//     const hasRemediationDetails = result.Remediation && result.Remediation !== 'N/A';
+    
+//     if (!hasRemediationDetails) {
+//         return;
+//     }
+    
+//     const existingDetails = element.querySelector('.result-details');
+    
+//     if (existingDetails) {
+//         existingDetails.remove();
+//         element.classList.remove('expanded');
+//         const expandIcon = element.querySelector('.expand-icon');
+//         if (expandIcon) expandIcon.textContent = '▼';
+//     } else {
+//         const detailsDiv = document.createElement('div');
+//         detailsDiv.className = 'result-details';
+        
+//         let detailsHTML = '';
+        
+//         if (result.Remediation && result.Remediation !== 'N/A') {
+//             detailsHTML += `
+//                 <div class="detail-section">
+//                     <div class="detail-header">
+//                         <span class="detail-icon">🛠️</span>
+//                         <strong>Remediation</strong>
+//                     </div>
+//                     <div class="detail-content">${result.Remediation}</div>
+//                 </div>
+//             `;
+//         }
+        
+//         if (result['Resolution Steps'] && result['Resolution Steps'] !== 'N/A') {
+//             detailsHTML += `
+//                 <div class="detail-section">
+//                     <div class="detail-header">
+//                         <span class="detail-icon">📋</span>
+//                         <strong>Resolution Steps</strong>
+//                     </div>
+//                     <div class="detail-content">${formatResolutionSteps(result['Resolution Steps'])}</div>
+//                 </div>
+//             `;
+//         }
+        
+//         detailsDiv.innerHTML = detailsHTML;
+//         element.querySelector('.result-content').appendChild(detailsDiv);
+//         element.classList.add('expanded');
+        
+//         const expandIcon = element.querySelector('.expand-icon');
+//         if (expandIcon) expandIcon.textContent = '▲';
+//     }
+// }
+
+// // Format Resolution Steps
+// function formatResolutionSteps(steps) {
+//     if (steps.includes('\n')) {
+//         const stepsArray = steps.split('\n').filter(s => s.trim());
+//         return '<ol class="resolution-steps">' + 
+//             stepsArray.map(step => `<li>${step.trim()}</li>`).join('') + 
+//             '</ol>';
+//     }
+//     return steps;
+// }
+
+// // Handle New Scan
+// function handleNewScan() {
+//     location.reload();
+// }
+
+// // Handle Download
+// function handleDownload() {
+//     window.location.href = '/download';
+// }
+
+// // UI Helper Functions
+// function updateScanButton(scanning) {
+//     if (scanning) {
+//         btnIcon.innerHTML = '<span class="loading">⚙️</span>';
+//         btnText.textContent = 'Scanning...';
+//         scanBtn.disabled = true;
+//         newScanBtn.style.display = 'inline-flex';
+//     } else {
+//         btnIcon.textContent = '🔍';
+//         btnText.textContent = 'Start Comprehensive Scan';
+//         scanBtn.disabled = false;
+//     }
+// }
+
+// function showError(message) {
+//     errorText.textContent = message;
+//     errorMessage.style.display = 'flex';
+// }
+
+// function hideError() {
+//     errorMessage.style.display = 'none';
+// }
+
+// function showAuthSuccess(message) {
+//     authSuccessText.textContent = message;
+//     authSuccessMessage.style.display = 'flex';
+// }
+
+// function hideAuthSuccess() {
+//     authSuccessMessage.style.display = 'none';
+// }
+
+// function showProgress(message) {
+//     progressText.innerHTML = message;
+//     progressMessage.style.display = 'flex';
+// }
+
+// function hideProgress() {
+//     progressMessage.style.display = 'none';
+// }
+
+
+// ─── DOM Elements ───────────────────────────────────────────
+const targetInput        = document.getElementById('targetInput');
+const loginType          = document.getElementById('loginType');
+const scanBtn            = document.getElementById('scanBtn');
+const testAuthBtn        = document.getElementById('testAuthBtn');
+const btnIcon            = document.getElementById('btnIcon');
+const btnText            = document.getElementById('btnText');
+const newScanBtn         = document.getElementById('newScanBtn');
+const errorMessage       = document.getElementById('errorMessage');
+const errorText          = document.getElementById('errorText');
+const authSuccessMessage = document.getElementById('authSuccessMessage');
+const authSuccessText    = document.getElementById('authSuccessText');
+const progressMessage    = document.getElementById('progressMessage');
+const progressText       = document.getElementById('progressText');
+const testCoverageSection= document.getElementById('testCoverageSection');
+const resultsSection     = document.getElementById('resultsSection');
+const resultsContainer   = document.getElementById('resultsContainer');
+const scanLog            = document.getElementById('scanLog');
+const basicAuthFields    = document.getElementById('basicAuthFields');
+const formAuthFields     = document.getElementById('formAuthFields');
+
+// ─── State ──────────────────────────────────────────────────
+let isScanning   = false;
+let eventSource  = null;
+let crawledPaths = [];
+const PHASE_PCT  = { 1: 15, 2: 40, 3: 85, 4: 100 };
+
+// ─── Init ────────────────────────────────────────────────────
+loginType.addEventListener('change', handleLoginTypeChange);
+targetInput.addEventListener('keypress', e => { if (e.key === 'Enter' && !isScanning) handleScan(); });
+
+// New Scan button HIDDEN by default; appears only after scan completes
+newScanBtn.style.display = 'none';
+
+window.addEventListener('DOMContentLoaded', () => { restoreStateOnLoad(); });
+
+// ─── On page load: restore logs + results if scan already ran ─
+async function restoreStateOnLoad() {
+    try {
+        const r    = await fetch('/api/scan-logs');
+        const data = await r.json();
+
+        // Always restore logs if they exist
+        if (data.logs && data.logs.length > 0) {
+            clearLog();
+            data.logs.forEach(line => appendLog(line));
+        }
+
+        if (data.running) {
+            // Scan still in progress — reconnect SSE
+            isScanning = true;
+            updateScanButton(true);
+            connectToProgressStream();
+        } else {
+            // Check if a completed scan result is available
+            const sr = await fetch('/scan-status');
+            const sd = await sr.json();
+            if (sd.status === 'success' && sd.results) {
+                setProgress(100, 'Scan complete ✅');
+                setPhaseActive(4);
+                testCoverageSection.style.display = 'block';
+                displayResults(sd.results);
+                resultsSection.style.display = 'block';
+                // Show New Scan button since scan is done
+                newScanBtn.style.display = 'inline-flex';
+            }
+        }
+    } catch (_) {}
+}
+
+// ─── Auth type toggle ────────────────────────────────────────
+function handleLoginTypeChange() {
+    const type = loginType.value;
+    basicAuthFields.style.display = 'none';
+    formAuthFields.style.display  = 'none';
+    testAuthBtn.style.display     = 'none';
+    hideAuthSuccess();
+    if (type === 'basic') { basicAuthFields.style.display = 'block'; testAuthBtn.style.display = 'inline-flex'; }
+    if (type === 'form')  { formAuthFields.style.display  = 'block'; testAuthBtn.style.display = 'inline-flex'; }
+}
+
+// ─── Test Auth ───────────────────────────────────────────────
+async function handleTestAuth() {
+    const target = targetInput.value.trim();
+    const type   = loginType.value;
+    if (!target)         { showError('Please enter a target URL first'); return; }
+    if (type === 'none') { showError('Please select an authentication method'); return; }
+    hideError(); hideAuthSuccess(); showProgress('🔍 Testing authentication...');
+    try {
+        const res    = await fetch('/test-auth', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ target, auth_type: type, auth_data: collectAuthData() }) });
+        const result = await res.json();
+        hideProgress();
+        if (result.status === 'success') showAuthSuccess(result.message);
+        else showError(result.message);
+    } catch (e) { hideProgress(); showError('Authentication test failed: ' + e.message); }
+}
+
+function collectAuthData() {
+    const type = loginType.value;
+    const d = {};
+    if (type === 'basic') {
+        d.username = document.getElementById('basicUsername').value.trim();
+        d.password = document.getElementById('basicPassword').value.trim();
+    } else if (type === 'form') {
+        d.login_url         = document.getElementById('formLoginUrl').value.trim();
+        d.username          = document.getElementById('formUsername').value.trim();
+        d.password          = document.getElementById('formPassword').value.trim();
+        d.username_field    = document.getElementById('formUsernameField').value.trim() || 'username';
+        d.password_field    = document.getElementById('formPasswordField').value.trim() || 'password';
+        d.success_indicator = document.getElementById('formSuccessIndicator').value.trim();
+    }
+    return d;
+}
+
+// ─── Start Scan ──────────────────────────────────────────────
+async function handleScan() {
+    const target = targetInput.value.trim();
+    if (!target) { showError('Please enter a target URL or IP address'); return; }
+    hideError(); hideAuthSuccess();
+
+    isScanning = true; crawledPaths = [];
+    updateScanButton(true);
+    newScanBtn.style.display = 'none';   // hide during scan
+
+    resultsSection.style.display      = 'none';
+    testCoverageSection.style.display = 'none';
+    clearLog(); resetProgress();
+    showProgress('🚀 Initializing scan...');
+    appendLog('[--:--:--] 🚀 Scan initializing for ' + target);
+
+    try {
+        const res    = await fetch('/scan', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ target, auth_type: loginType.value, auth_data: collectAuthData(), owasp_enabled: true }) });
+        const result = await res.json();
+        if (result.status === 'started') connectToProgressStream();
+        else handleScanError(result.message || 'Scan failed to start');
+    } catch (e) { handleScanError('Scan request failed: ' + e.message); }
+}
+
+// ─── SSE Stream ──────────────────────────────────────────────
+function connectToProgressStream() {
+    if (eventSource) eventSource.close();
+    eventSource = new EventSource('/scan-progress');
+    eventSource.onmessage = e => {
+        try { handleProgressUpdate(JSON.parse(e.data)); } catch (err) { console.error(err); }
+    };
+    eventSource.onerror = () => { eventSource.close(); setTimeout(pollScanStatus, 1000); };
+}
+
+// ─── Progress event handler ──────────────────────────────────
+function handleProgressUpdate(data) {
+    switch (data.type) {
+        case 'log':
+            appendLog(data.message); break;
+        case 'phase':
+            setProgress(PHASE_PCT[data.phase] || 0, `Phase ${data.phase}: ${data.name}`);
+            setPhaseActive(data.phase);
+            showProgress(`📋 Phase ${data.phase}: ${data.name}`);
+            appendLog(`[--:--:--] 📋 Phase ${data.phase}: ${data.name}`); break;
+        case 'crawl_start':
+            showProgress(`🕷️ Starting crawler (max ${data.max_pages} pages)...`);
+            appendLog(`[--:--:--] 🕷️ Crawler starting — max ${data.max_pages} pages`); break;
+        case 'crawling':
+            crawledPaths.push(data.url);
+            showProgress(`🕷️ Crawling: ${data.url}<br><small>Page ${data.count} of ${data.total}</small>`);
+            appendLog(`[--:--:--] 🕷️ [${data.count}/${data.total}] ${data.url}`); break;
+        case 'crawl_complete':
+            setProgress(75, 'Crawl complete');
+            showProgress(`✅ Crawl complete! ${data.total_paths} paths from ${data.pages_crawled} pages`);
+            appendLog(`[--:--:--] ✅ Crawl done — ${data.total_paths} paths / ${data.pages_crawled} pages`); break;
+        case 'complete':
+            eventSource.close(); fetchScanResults(); break;
+        case 'heartbeat': break;
+    }
+}
+
+// ─── Poll fallback ───────────────────────────────────────────
+async function pollScanStatus() {
+    if (!isScanning) return;
+    try {
+        const r = await fetch('/scan-status');
+        const d = await r.json();
+        if      (d.status === 'running') setTimeout(pollScanStatus, 2000);
+        else if (d.status === 'success') handleScanComplete(d);
+        else if (d.status === 'error')   handleScanError(d.message);
+        else                             setTimeout(pollScanStatus, 2000);
+    } catch (e) { setTimeout(pollScanStatus, 2000); }
+}
+
+async function fetchScanResults() {
+    showProgress('📊 Fetching results...');
+    try {
+        const r = await fetch('/scan-status');
+        const d = await r.json();
+        if      (d.status === 'success') handleScanComplete(d);
+        else if (d.status === 'error')   handleScanError(d.message);
+        else                             setTimeout(fetchScanResults, 1000);
+    } catch (e) { handleScanError('Failed to fetch results: ' + e.message); }
+}
+
+// ─── Scan Complete ───────────────────────────────────────────
+function handleScanComplete(result) {
+    isScanning = false;
+    updateScanButton(false);
+    hideProgress();
+    setProgress(100, 'Scan complete ✅');
+    setPhaseActive(4);
+    testCoverageSection.style.display = 'block';
+    displayResults(result.results);
+    resultsSection.style.display = 'block';
+    resultsSection.scrollIntoView({ behavior: 'smooth' });
+    appendLog('[--:--:--] ✅ Scan complete. Results loaded below.');
+    // ⭐ Show "New Scan" ONLY after scan is done
+    newScanBtn.style.display = 'inline-flex';
+}
+
+function handleScanError(message) {
+    isScanning = false;
+    updateScanButton(false);
+    hideProgress();
+    showError(message);
+    appendLog('[--:--:--] ❌ Error: ' + message);
+    if (eventSource) eventSource.close();
+    newScanBtn.style.display = 'inline-flex';
+}
+
+// ─── Results Rendering ───────────────────────────────────────
+function displayResults(results) {
+    resultsContainer.innerHTML = '';
+    if (!results || results.length === 0) {
+        resultsContainer.innerHTML = '<p style="padding:1rem;color:var(--text-muted)">No security issues found.</p>';
+        return;
+    }
+    results.forEach((r, i) => resultsContainer.appendChild(createResultElement(r, i)));
+}
+
+function createResultElement(result, index) {
+    const div = document.createElement('div');
+    div.className = `result-item severity-${(result.Severity||'info').toLowerCase()}`;
+    const hasDetails = result.Remediation && result.Remediation !== 'N/A';
+    if (hasDetails) { div.style.cursor = 'pointer'; div.addEventListener('click', () => toggleDetails(div, result)); }
+    const statusClass = (result.Status||'').toLowerCase().replace(/ /g, '-');
+    div.innerHTML = `
+        <div class="result-content">
+            <div class="result-test">
+                <span>${result.Test}</span>
+                ${hasDetails ? '<span class="expand-icon">▼</span>' : ''}
+                <span class="badge status-${statusClass} status-badge">${result.Status}</span>
+            </div>
+            <div class="result-finding">${result.Finding}</div>
+            ${result['Vulnerable Path'] && result['Vulnerable Path'] !== 'N/A'
+                ? `<div class="result-finding" style="margin-top:8px"><strong>Affected Path(s):</strong> ${result['Vulnerable Path']}</div>` : ''}
+        </div>`;
+    return div;
+}
+
+function toggleDetails(el, result) {
+    const existing = el.querySelector('.result-details');
+    if (existing) {
+        existing.remove(); el.classList.remove('expanded');
+        const ic = el.querySelector('.expand-icon'); if (ic) ic.textContent = '▼';
+        return;
+    }
+    const d = document.createElement('div'); d.className = 'result-details';
+    let html = '';
+    if (result.Remediation && result.Remediation !== 'N/A')
+        html += `<div class="detail-section"><div class="detail-header"><span class="detail-icon">🛠️</span><strong>Remediation</strong></div><div class="detail-content">${result.Remediation}</div></div>`;
+    if (result['Resolution Steps'] && result['Resolution Steps'] !== 'N/A')
+        html += `<div class="detail-section"><div class="detail-header"><span class="detail-icon">📋</span><strong>Resolution Steps</strong></div><div class="detail-content">${formatResolutionSteps(result['Resolution Steps'])}</div></div>`;
+    d.innerHTML = html;
+    el.querySelector('.result-content').appendChild(d);
+    el.classList.add('expanded');
+    const ic = el.querySelector('.expand-icon'); if (ic) ic.textContent = '▲';
+}
+
+function formatResolutionSteps(steps) {
+    if (typeof steps === 'string' && steps.includes('\n')) {
+        const arr = steps.split('\n').filter(s => s.trim());
+        return '<ol class="resolution-steps">' + arr.map(s => `<li>${s.trim()}</li>`).join('') + '</ol>';
+    }
+    return steps || '';
+}
+
+// ─── Scan Log Panel ──────────────────────────────────────────
+function clearLog() {
+    if (scanLog) scanLog.innerHTML = '';
+}
+
+function appendLog(line) {
+    if (!scanLog) return;
+    const ph = scanLog.querySelector('.log-info');
+    if (ph) ph.remove();
+    const span = document.createElement('div');
+    span.style.cssText = 'padding:1px 0;border-bottom:1px solid rgba(255,255,255,0.04);word-break:break-all;';
+    if      (line.includes('❌') || line.includes('Error'))    span.style.color = '#f87171';
+    else if (line.includes('✅') || line.includes('complete'))  span.style.color = '#4ade80';
+    else if (line.includes('📋') || line.includes('Phase'))     span.style.color = '#60a5fa';
+    else if (line.includes('🕷️') || line.includes('Crawl'))    span.style.color = '#facc15';
+    else if (line.includes('🚀'))                               span.style.color = '#a78bfa';
+    else                                                         span.style.color = '#94a3b8';
+    span.textContent = line;
+    scanLog.appendChild(span);
+    scanLog.scrollTop = scanLog.scrollHeight;
+}
+
+// ─── Progress Bar ────────────────────────────────────────────
+function setProgress(pct, label) {
+    const fill  = document.getElementById('progFill');
+    const pLbl  = document.getElementById('phaseLabel');
+    const pPct  = document.getElementById('pctLabel');
+    if (fill)  fill.style.width   = pct + '%';
+    if (pLbl)  pLbl.textContent   = label || '';
+    if (pPct)  pPct.textContent   = pct + '%';
+}
+
+function resetProgress() {
+    setProgress(0, 'Ready');
+    document.querySelectorAll('.phase').forEach(p => p.classList.remove('active','done'));
+}
+
+function setPhaseActive(phase) {
+    for (let i = 1; i <= 4; i++) {
+        const el = document.getElementById('ph' + i);
+        if (!el) continue;
+        if      (i < phase)  { el.classList.remove('active'); el.classList.add('done'); }
+        else if (i === phase) { el.classList.add('active');   el.classList.remove('done'); }
+        else                  { el.classList.remove('active','done'); }
+    }
+}
+
+// ─── Misc ────────────────────────────────────────────────────
+function handleNewScan()  { location.reload(); }
+function handleDownload() { window.location.href = '/download'; }
+
+function updateScanButton(scanning) {
+    if (scanning) {
+        btnIcon.innerHTML   = '<span class="loading">⚙️</span>';
+        btnText.textContent = 'Scanning...';
+        scanBtn.disabled    = true;
+    } else {
+        btnIcon.textContent = '🔍';
+        btnText.textContent = 'Start Comprehensive Scan';
+        scanBtn.disabled    = false;
+    }
+}
+
+function showError(msg)       { errorText.textContent = msg; errorMessage.style.display = 'flex'; }
+function hideError()          { errorMessage.style.display = 'none'; }
+function showAuthSuccess(msg) { authSuccessText.textContent = msg; authSuccessMessage.style.display = 'flex'; }
+function hideAuthSuccess()    { authSuccessMessage.style.display = 'none'; }
+function showProgress(msg)    { progressText.innerHTML = msg; progressMessage.style.display = 'flex'; }
+function hideProgress()       { progressMessage.style.display = 'none'; }
