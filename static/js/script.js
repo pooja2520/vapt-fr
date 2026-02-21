@@ -521,42 +521,25 @@ newScanBtn.style.display = 'none';
 
 window.addEventListener('DOMContentLoaded', () => { restoreStateOnLoad(); });
 
-// ─── On page load: restore logs + results if scan already ran ─
+// ─── On page load: ONLY reconnect if scan is actively running ─
+// Completed scan results are NOT restored on refresh — user sees a clean page.
 async function restoreStateOnLoad() {
-    // If user clicked "New Scan", skip restore for this page load
-    if (sessionStorage.getItem('vapt_new_scan') === '1') {
-        sessionStorage.removeItem('vapt_new_scan');
-        return;
-    }
     try {
         const r    = await fetch('/api/scan-logs');
         const data = await r.json();
 
-        // Always restore logs if they exist
-        if (data.logs && data.logs.length > 0) {
-            clearLog();
-            data.logs.forEach(line => appendLog(line));
-        }
-
         if (data.running) {
-            // Scan still in progress — reconnect SSE
+            // Scan still actively in progress — reconnect SSE and show live logs
             isScanning = true;
             updateScanButton(true);
-            connectToProgressStream();
-        } else {
-            // Check if a completed scan result is available
-            const sr = await fetch('/scan-status');
-            const sd = await sr.json();
-            if (sd.status === 'success' && sd.results) {
-                setProgress(100, 'Scan complete ✅');
-                setPhaseActive(4);
-                testCoverageSection.style.display = 'block';
-                displayResults(sd.results);
-                resultsSection.style.display = 'block';
-                // Show New Scan button since scan is done
-                newScanBtn.style.display = 'inline-flex';
+            newScanBtn.style.display = 'none';
+            if (data.logs && data.logs.length > 0) {
+                clearLog();
+                data.logs.forEach(line => appendLog(line));
             }
+            connectToProgressStream();
         }
+        // If scan is idle or complete — do nothing, show clean empty page
     } catch (_) {}
 }
 
@@ -820,44 +803,44 @@ function setPhaseActive(phase) {
 }
 
 // ─── Misc ────────────────────────────────────────────────────
-function handleNewScan() {
-    // Mark that we're doing a fresh start — suppress restoreStateOnLoad
-    sessionStorage.setItem('vapt_new_scan', '1');
+async function handleNewScan() {
+    // 1. Tell server to wipe scan_results + logs so a refresh won't restore them
+    try { await fetch('/api/reset-scan', { method: 'POST' }); } catch(_) {}
 
-    // Close any open SSE stream
+    // 2. Close any open SSE stream
     if (eventSource) { eventSource.close(); eventSource = null; }
     isScanning   = false;
     crawledPaths = [];
 
-    // Reset UI — hide results, coverage, logs
+    // 3. Reset UI — hide results, coverage, logs
     resultsSection.style.display      = 'none';
     testCoverageSection.style.display = 'none';
     resultsContainer.innerHTML        = '';
     clearLog();
     resetProgress();
 
-    // Reset log panel placeholder
+    // 4. Restore log panel placeholder text
     if (scanLog) {
         const ph = document.createElement('span');
-        ph.className = 'log-info';
+        ph.className   = 'log-info';
         ph.style.color = '#64748b';
         ph.textContent = 'No scan logs yet. Configure and start a scan.';
         scanLog.appendChild(ph);
     }
 
-    // Hide New Scan, re-enable Start Scan
+    // 5. Hide New Scan button, re-enable Start Scan
     newScanBtn.style.display = 'none';
     updateScanButton(false);
     hideError();
     hideProgress();
     hideAuthSuccess();
 
-    // Clear the target input & reset auth
-    targetInput.value  = '';
-    loginType.value    = 'none';
+    // 6. Clear the target input & reset auth
+    targetInput.value = '';
+    loginType.value   = 'none';
     handleLoginTypeChange();
 
-    // Scroll back to top of page
+    // 7. Scroll back to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 function handleDownload() { window.location.href = '/download'; }
