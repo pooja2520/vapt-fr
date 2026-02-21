@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Reports - VAPT Scanner Pro{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{{ url_for('static', filename='css/reports.css') }}">{% endblock %}
+{% block body %}
+<div id="_main" style="padding-top:56px;margin-left:220px;min-height:100vh;">
+<div class="content">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.625rem;">
+    <div>
+      <h1 style="font-family:'Space Grotesk',sans-serif;font-size:1.375rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:.4rem;">
+        <i class="fa-regular fa-file-lines" style="color:var(--blue)"></i> Reports &amp; Export
+      </h1>
+      <p style="font-size:.78rem;color:var(--text-muted);">View, download, and export security scan reports</p>
+    </div>
+    <div class="export-btns">
+      <a href="/download" class="exp-btn"><i class="fa-regular fa-file-excel"></i> Download Latest</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ch"><i class="fa-regular fa-file-lines"></i> Recent Reports</div>
+    <div class="cb" style="padding:0;" id="reportsList">
+      <!-- Loaded dynamically -->
+      <div style="text-align:center;padding:2.5rem;color:var(--text-muted);" id="reportsEmpty">
+        <i class="fa-regular fa-file-lines" style="font-size:2rem;margin-bottom:.5rem;display:block;color:var(--border)"></i>
+        No reports yet. <a href="/scanning" style="color:var(--blue)">Run a scan</a> to generate your first report.
+      </div>
+    </div>
+    <div style="padding:.625rem 1rem;text-align:center;border-top:1px solid var(--border);">
+      <p style="font-size:.72rem;color:var(--text-muted);">Reports are stored for 90 days.</p>
+    </div>
+  </div>
+</div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+initLayout('/reports');
+
+async function loadReports() {
+    try {
+        const res  = await fetch('/api/reports');
+        const data = await res.json();
+        const list = data.reports || [];
+        const container = document.getElementById('reportsList');
+        const empty     = document.getElementById('reportsEmpty');
+
+        if (list.length === 0) {
+            empty.style.display = 'block';
+            return;
+        }
+        empty.style.display = 'none';
+
+        // Build report items
+        container.innerHTML = list.map(r => {
+            const vc  = r.vuln_counts || {};
+            const badgesHtml = [
+                vc.critical ? `<span class="bx bc">${vc.critical}C</span>` : '',
+                vc.high     ? `<span class="bx bh">${vc.high}H</span>`     : '',
+                vc.medium   ? `<span class="bx bm">${vc.medium}M</span>`   : '',
+                vc.low      ? `<span class="bx bl">${vc.low}L</span>`      : '',
+            ].filter(Boolean).join(' ');
+            const statusCls  = r.status === 'Completed' ? 'bac' : 'bpg';
+            const statusIcon = r.status === 'Completed' ? 'fa-circle-check' : 'fa-clock';
+            return `<div class="report-item">
+                <div>
+                    <strong style="font-size:.9rem;">${r.name}</strong>
+                    <div class="report-meta">
+                        <span><i class="fa-regular fa-calendar"></i> ${r.date}</span>
+                        <span class="bx ${statusCls}"><i class="fa-solid ${statusIcon}"></i> ${r.status}</span>
+                        <span style="font-size:.72rem;color:var(--text-muted)">${r.total} findings</span>
+                    </div>
+                </div>
+                <div class="report-right">
+                    <div class="vuln-counts">${badgesHtml || '<span style="font-size:.72rem;color:var(--text-muted)">No vulns</span>'}</div>
+                    <a href="/reports/${r.id}" class="btn btn-o btn-s"><i class="fa-regular fa-eye"></i> View</a>
+                    <a href="/download-report/${r.id}" class="btn btn-p btn-s"><i class="fa-solid fa-download"></i> Download</a>
+                </div>
+            </div>`;
+        }).join('');
+
+    } catch (e) {
+        console.error('Failed to load reports:', e);
+    }
+}
+
+loadReports();
+setInterval(loadReports, 10000);
+</script>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Edit Target - VAPT Scanner Pro{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{{ url_for('static', filename='css/targets.css') }}">{% endblock %}
+{% block body %}
+<div id="_main" style="padding-top:56px;margin-left:220px;min-height:100vh;">
+<div class="content">
+  <a href="/targets/{{ target_id }}/view" class="back-a"><i class="fa-solid fa-arrow-left"></i> Back to Target</a>
+  <div class="pt"><h1><i class="fa-solid fa-crosshairs"></i> Edit Target</h1><p>Update target configuration</p></div>
+  <div class="card" style="max-width:680px;">
+    <div class="cb">
+      <div class="fg"><label>Target Name <span style="color:var(--red)">*</span></label><input type="text" value="Production Web App"></div>
+      <div class="fg"><label>URL / IP Address <span style="color:var(--red)">*</span></label><input type="text" value="https://app.example.com"></div>
+      <div class="fg">
+        <label>Target Type</label>
+        <div class="type-btns">
+          <button class="type-btn active" onclick="selType(this)"><i class="fa-solid fa-globe"></i> Web</button>
+          <button class="type-btn" onclick="selType(this)"><i class="fa-solid fa-code"></i> API</button>
+          <button class="type-btn" onclick="selType(this)"><i class="fa-solid fa-wifi"></i> IP</button>
+        </div>
+      </div>
+      <div class="fg"><label>Description</label><textarea>Main production application serving end users.</textarea></div>
+      <div class="fg"><label>Authentication</label>
+        <select><option value="none">No Authentication</option><option value="basic">HTTP Basic</option><option value="form">Form-based</option><option value="bearer">Bearer Token</option></select>
+      </div>
+      <div style="display:flex;gap:.625rem;">
+        <button class="btn btn-p" onclick="save()"><i class="fa-regular fa-floppy-disk"></i> Save Changes</button>
+        <a href="/targets/{{ target_id }}/view" class="btn btn-o">Cancel</a>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+initLayout('/targets');
+function selType(b) { document.querySelectorAll('.type-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); }
+function save() { alert('Changes saved!'); window.location.href = '/targets/{{ target_id }}/view'; }
+</script>
+{% endblock %}

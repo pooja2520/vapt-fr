@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - VAPT Scanner Pro{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+{% endblock %}
+{% block body %}
+<div id="_main" style="padding-top:56px;margin-left:220px;min-height:100vh;">
+<div class="content">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.625rem;">
+    <div>
+      <h1 style="font-family:'Space Grotesk',sans-serif;font-size:1.375rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:.4rem;">
+        <i class="fa-solid fa-shield-halved" style="color:var(--blue)"></i> Automated VAPT Dashboard</h1>
+      <p style="font-size:.78rem;color:var(--text-muted);">Discover vulnerabilities before attackers do</p>
+    </div>
+    <div style="display:flex;gap:.5rem;">
+      <a href="/scanning" class="btn btn-p"><i class="fa-solid fa-play"></i> Start Scan</a>
+      <a href="/targets"  class="btn btn-o"><i class="fa-solid fa-crosshairs"></i> Manage Targets</a>
+    </div>
+  </div>
+
+  <!-- Live Stats Cards -->
+  <div class="sg" id="statsGrid">
+    <div class="sc"><i class="fa-solid fa-bug sc-icon" style="color:var(--blue)"></i><h2 id="statTotal">—</h2><p>Total Vulnerabilities</p></div>
+    <div class="sc"><i class="fa-solid fa-triangle-exclamation sc-icon" style="color:var(--red)"></i><h2 id="statCritical" style="color:var(--red)">—</h2><p>Critical</p></div>
+    <div class="sc"><i class="fa-solid fa-triangle-exclamation sc-icon" style="color:var(--orange)"></i><h2 id="statHigh" style="color:var(--orange)">—</h2><p>High</p></div>
+    <div class="sc"><i class="fa-solid fa-shield-halved sc-icon" style="color:var(--yellow)"></i><h2 id="statMedium" style="color:var(--yellow)">—</h2><p>Medium</p></div>
+    <div class="sc"><i class="fa-solid fa-shield-halved sc-icon" style="color:var(--blue)"></i><h2 id="statLow" style="color:var(--blue)">—</h2><p>Low</p></div>
+  </div>
+
+  <div class="g2">
+    <!-- Severity Distribution (live) -->
+    <div class="card">
+      <div class="ch"><i class="fa-solid fa-bug"></i> Severity Distribution</div>
+      <div class="cb" style="display:flex;flex-direction:column;align-items:center;">
+        <canvas id="sevC" style="max-height:150px;max-width:150px;"></canvas>
+        <div class="lgd" id="sevLegend" style="margin-top:.625rem;display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center;"></div>
+        <p id="noScanMsg" style="font-size:.78rem;color:var(--text-muted);margin-top:.75rem;display:none;">No scan data yet. Run a scan to see results.</p>
+      </div>
+    </div>
+
+    <!-- Scan Overview (live) -->
+    <div class="card">
+      <div class="ch"><i class="fa-solid fa-bolt"></i> Scan Overview</div>
+      <div class="cb">
+        <div class="scan-stats">
+          <div class="ss"><i class="fa-solid fa-circle-check" style="color:var(--green)"></i><strong id="soCompleted">—</strong><small>Completed</small></div>
+          <div class="ss"><i class="fa-solid fa-crosshairs" style="color:var(--blue)"></i><strong id="soTargets">—</strong><small>Targets</small></div>
+          <div class="ss"><i class="fa-regular fa-file-lines" style="color:var(--yellow)"></i><strong id="soReports">—</strong><small>Reports</small></div>
+          <div class="ss"><i class="fa-solid fa-bug" style="color:var(--red)"></i><strong id="soTotal">—</strong><small>Total Findings</small></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Vulnerabilities (live) -->
+  <div class="card">
+    <div class="ch"><i class="fa-solid fa-triangle-exclamation"></i> Recent Findings</div>
+    <div class="cb" style="padding:0;overflow-x:auto;">
+      <table class="dt" id="recentTable">
+        <thead><tr><th>Vulnerability</th><th>Severity</th><th>Target</th><th>Status</th></tr></thead>
+        <tbody id="recentBody">
+          <tr><td colspan="4" style="text-align:center;padding:1.5rem;color:var(--text-muted);font-size:.825rem;">No scan data yet. <a href="/scanning" style="color:var(--blue)">Run a scan</a> to see findings here.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="padding:.75rem 1rem;text-align:right;border-top:1px solid var(--border);">
+      <a href="/vulnerabilities" class="btn btn-o btn-s">View All <i class="fa-solid fa-arrow-right"></i></a>
+    </div>
+  </div>
+
+  <!-- Security Checklist -->
+  <div class="card">
+    <div class="ch"><i class="fa-solid fa-circle-check"></i> Security Checklist</div>
+    <div class="cb">
+      <div class="cl-item"><div class="cl-circle todo"></div><div class="cl-text"><strong>Add Targets</strong><small>Add your first target URL</small></div><a href="/targets/create" class="cl-action">Start</a></div>
+      <div class="cl-item"><div class="cl-circle todo"></div><div class="cl-text"><strong>Run First Scan</strong><small>Scan your target for vulnerabilities</small></div><a href="/scanning" class="cl-action">Start</a></div>
+      <div class="cl-item"><div class="cl-circle todo"></div><div class="cl-text"><strong>Review Findings</strong><small>Review and prioritize vulnerabilities</small></div><a href="/vulnerabilities" class="cl-action">Start</a></div>
+      <div class="cl-item"><div class="cl-circle todo"></div><div class="cl-text"><strong>Download Report</strong><small>Export your security report</small></div><a href="/reports" class="cl-action">Start</a></div>
+    </div>
+  </div>
+
+  <div class="legal"><i class="fa-solid fa-triangle-exclamation"></i><span><strong>Legal Notice:</strong> Only scan systems you own or have explicit permission to test.</span></div>
+</div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+initLayout('/dashboard');
+
+let sevChart = null;
+
+const SEV_COLORS = {
+    critical: '#ef4444',
+    high:     '#f97316',
+    medium:   '#eab308',
+    low:      '#2563EB'
+};
+
+async function loadDashboard() {
+    try {
+        const res  = await fetch('/api/dashboard-stats');
+        const data = await res.json();
+        const s    = data.stats;
+
+        // Stat cards
+        document.getElementById('statTotal').textContent    = s.total;
+        document.getElementById('statCritical').textContent = s.critical;
+        document.getElementById('statHigh').textContent     = s.high;
+        document.getElementById('statMedium').textContent   = s.medium;
+        document.getElementById('statLow').textContent      = s.low;
+
+        // Scan overview
+        document.getElementById('soCompleted').textContent = data.completed_scans || 0;
+        document.getElementById('soTargets').textContent   = data.total_targets   || 0;
+        document.getElementById('soReports').textContent   = data.total_reports   || 0;
+        document.getElementById('soTotal').textContent     = s.total;
+
+        // Severity donut chart
+        const hasData = s.critical + s.high + s.medium + s.low > 0;
+        const noMsg   = document.getElementById('noScanMsg');
+        if (hasData) {
+            noMsg.style.display = 'none';
+            const labels = ['Critical', 'High', 'Medium', 'Low'];
+            const values = [s.critical, s.high, s.medium, s.low];
+            const colors = ['#ef4444','#f97316','#eab308','#2563EB'];
+            if (sevChart) { sevChart.data.datasets[0].data = values; sevChart.update(); }
+            else {
+                sevChart = new Chart(document.getElementById('sevC'), {
+                    type: 'doughnut',
+                    data: { datasets:[{ data: values, backgroundColor: colors, borderWidth:2, borderColor:'#fff' }] },
+                    options: { responsive:true, cutout:'65%', plugins:{ legend:{ display:false } } }
+                });
+            }
+            // Legend
+            const leg = document.getElementById('sevLegend');
+            leg.innerHTML = labels.map((l,i) => `<span style="font-size:.7rem;color:var(--text-muted);display:flex;align-items:center;gap:.25rem;"><span style="width:9px;height:9px;border-radius:50%;background:${colors[i]};display:inline-block"></span>${l} (${values[i]})</span>`).join('');
+        } else {
+            noMsg.style.display = 'block';
+        }
+
+        // Recent findings table
+        const tbody = document.getElementById('recentBody');
+        if (data.recent_vulnerabilities && data.recent_vulnerabilities.length > 0) {
+            tbody.innerHTML = data.recent_vulnerabilities.map(v => {
+                const sev = v.severity.toLowerCase();
+                const cls = sev === 'critical' ? 'bc' : sev === 'high' ? 'bh' : sev === 'medium' ? 'bm' : 'bl';
+                const icon = sev === 'low' ? 'fa-shield-halved' : 'fa-triangle-exclamation';
+                const statCls = v.status.toLowerCase() === 'vulnerable' ? 'bc' : 'bac';
+                const targetHost = v.target ? v.target.replace('https://','').replace('http://','').split('/')[0] : '—';
+                return `<tr>
+                    <td><strong>${v.test}</strong><br><small style="color:var(--text-muted)">${v.finding.substring(0,80)}${v.finding.length>80?'...':''}</small></td>
+                    <td><span class="bx ${cls}"><i class="fa-solid ${icon}"></i> ${v.severity}</span></td>
+                    <td style="font-size:.78rem">${targetHost}</td>
+                    <td><span class="bx ${statCls}">${v.status}</span></td>
+                </tr>`;
+            }).join('');
+        } else {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:1.5rem;color:var(--text-muted);font-size:.825rem;">No scan data yet. <a href="/scanning" style="color:var(--blue)">Run a scan</a> to see findings here.</td></tr>';
+        }
+
+        // Update checklist based on real data
+        updateChecklist(data);
+
+    } catch (e) {
+        console.error('Dashboard load error:', e);
+    }
+}
+
+function updateChecklist(data) {
+    const items = document.querySelectorAll('.cl-item');
+    if (data.total_targets > 0)     items[0].querySelector('.cl-circle').className = 'cl-circle done';
+    if (data.completed_scans > 0)   items[1].querySelector('.cl-circle').className = 'cl-circle done';
+    if (data.stats.total > 0)       items[2].querySelector('.cl-circle').className = 'cl-circle done';
+    if (data.total_reports > 0)     items[3].querySelector('.cl-circle').className = 'cl-circle done';
+}
+
+// Load immediately and refresh every 10s if a scan might be running
+loadDashboard();
+setInterval(loadDashboard, 10000);
+</script>
+{% endblock %}

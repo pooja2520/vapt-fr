@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}Vulnerabilities - VAPT Scanner Pro{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{{ url_for('static', filename='css/vulnerabilities.css') }}">{% endblock %}
+{% block body %}
+<div id="_main" style="padding-top:56px;margin-left:220px;min-height:100vh;">
+<div class="content">
+  <div class="pt">
+    <h1><i class="fa-solid fa-bug"></i> Vulnerabilities</h1>
+    <p id="vulnSubtitle">Central findings repository</p>
+  </div>
+
+  <!-- Filters -->
+  <div class="card" style="margin-bottom:1rem;">
+    <div class="cb" style="padding:.75rem 1rem;">
+      <div class="filter-row">
+        <div style="flex:1;position:relative;">
+          <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:.825rem;"></i>
+          <input id="vsearch" oninput="filterVulns()" style="width:100%;padding:.5rem .75rem .5rem 2.25rem;border:1.5px solid var(--border);border-radius:8px;font-size:.825rem;font-family:'DM Sans',sans-serif;outline:none;" placeholder="Search vulnerabilities...">
+        </div>
+        <select id="sevFilter" onchange="filterVulns()">
+          <option value="">All Severities</option>
+          <option value="critical">Critical</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+          <option value="info">Info</option>
+        </select>
+        <select id="statFilter" onchange="filterVulns()">
+          <option value="">All Status</option>
+          <option value="vulnerable">Vulnerable</option>
+          <option value="complete">Complete</option>
+          <option value="success">Success</option>
+          <option value="secure">Secure</option>
+          <option value="fixed">Fixed</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="card">
+    <div class="cb" style="padding:0;overflow-x:auto;">
+      <table class="dt">
+        <thead>
+          <tr>
+            <th>Vulnerability</th>
+            <th>Severity</th>
+            <th>Target</th>
+            <th>Path</th>
+            <th>Status</th>
+            <th style="text-align:right">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="vBody">
+          <tr>
+            <td colspan="6" style="text-align:center;padding:2.5rem;color:var(--text-muted);">
+              <i class="fa-solid fa-shield-halved" style="font-size:2rem;margin-bottom:.5rem;display:block;color:var(--border)"></i>
+              Loading findings...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+initLayout('/vulnerabilities');
+
+let allVulns = [];
+
+async function loadVulnerabilities() {
+    try {
+        const res  = await fetch('/api/vulnerabilities');
+        const data = await res.json();
+        allVulns   = data.vulnerabilities || [];
+        renderTable(allVulns);
+        document.getElementById('vulnSubtitle').textContent =
+            `Central findings repository — ${data.total} total finding${data.total !== 1 ? 's' : ''}`;
+    } catch (e) { console.error('Failed to load vulnerabilities:', e); }
+}
+
+function sevClass(sev) {
+    sev = (sev||'').toLowerCase();
+    return sev === 'critical' ? 'bc' : sev === 'high' ? 'bh' : sev === 'medium' ? 'bm' : sev === 'low' ? 'bl' : 'bl';
+}
+function sevIcon(sev) {
+    return (sev||'').toLowerCase() === 'low' || (sev||'').toLowerCase() === 'info' ? 'fa-shield-halved' : 'fa-triangle-exclamation';
+}
+function statClass(st) {
+    st = (st||'').toLowerCase();
+    if (st === 'vulnerable') return 'bc';
+    if (st === 'fixed')      return 'bf';
+    if (st === 'complete' || st === 'success' || st === 'secure') return 'bac';
+    return 'bop';
+}
+function statIcon(st) {
+    st = (st||'').toLowerCase();
+    if (st === 'fixed')   return 'fa-circle-check';
+    if (st === 'vulnerable') return 'fa-circle-exclamation';
+    return 'fa-circle-check';
+}
+
+function renderTable(vulns) {
+    const tbody = document.getElementById('vBody');
+    if (!vulns || vulns.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:2.5rem;color:var(--text-muted);">
+            <i class="fa-solid fa-shield-halved" style="font-size:2rem;margin-bottom:.5rem;display:block;color:var(--border)"></i>
+            No vulnerabilities found. <a href="/scanning" style="color:var(--blue)">Run a scan</a> to discover findings.
+        </td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = vulns.map(v => {
+        const sev       = (v.Severity || 'Info');
+        const dispStatus= v._display_status || v.Status || 'Unknown';
+        const isFixed   = (dispStatus === 'Fixed');
+        const path      = v['Vulnerable Path'] && v['Vulnerable Path'] !== 'N/A' ? v['Vulnerable Path'] : '—';
+        const shortPath = path.length > 35 ? path.substring(0,35) + '...' : path;
+        const target    = v.target_url ? v.target_url.replace('https://','').replace('http://','').split('/')[0] : '—';
+
+        // Fix/Unfix button — only for Vulnerable items (not info/complete/success/secure)
+        const isActionable = ['vulnerable'].includes((v.Status||'').toLowerCase());
+        const fixBtn = isActionable
+            ? `<button class="btn ${isFixed ? 'btn-o' : 'btn-p'} btn-s" onclick="toggleFix(${v.id}, this)" title="${isFixed ? 'Mark as Open' : 'Mark as Fixed'}">
+                <i class="fa-solid ${isFixed ? 'fa-rotate-left' : 'fa-circle-check'}"></i> ${isFixed ? 'Unfix' : 'Mark Fixed'}
+               </button>`
+            : '';
+
+        return `<tr data-id="${v.id}" data-sev="${sev.toLowerCase()}" data-stat="${dispStatus.toLowerCase()}">
+            <td>
+                <strong>${v.Test || 'Unknown'}</strong><br>
+                <small style="color:var(--text-muted);font-size:.73rem">${(v.Finding||'').substring(0,75)}${(v.Finding||'').length>75?'...':''}</small>
+            </td>
+            <td><span class="bx ${sevClass(sev)}"><i class="fa-solid ${sevIcon(sev)}"></i> ${sev}</span></td>
+            <td style="font-size:.78rem">${target}</td>
+            <td style="font-size:.74rem;color:var(--text-muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${path}">${shortPath}</td>
+            <td id="status-${v.id}"><span class="bx ${statClass(dispStatus)}"><i class="fa-solid ${statIcon(dispStatus)}"></i> ${dispStatus}</span></td>
+            <td style="text-align:right;white-space:nowrap">
+                <a href="/vulnerabilities/${v.id}" class="btn btn-o btn-s" title="View Details"><i class="fa-regular fa-eye"></i></a>
+                ${fixBtn}
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+async function toggleFix(id, btn) {
+    try {
+        btn.disabled = true;
+        const res  = await fetch(`/api/vulnerabilities/${id}/fix`, { method:'POST' });
+        const data = await res.json();
+        if (data.status === 'success') {
+            // Update the status cell
+            const statusCell = document.getElementById('status-' + id);
+            const isFixed    = data.fixed;
+            const newSt      = data.new_status;
+            statusCell.innerHTML = `<span class="bx ${statClass(newSt)}"><i class="fa-solid ${statIcon(newSt)}"></i> ${newSt}</span>`;
+            // Update the button
+            btn.innerHTML   = `<i class="fa-solid ${isFixed ? 'fa-rotate-left' : 'fa-circle-check'}"></i> ${isFixed ? 'Unfix' : 'Mark Fixed'}`;
+            btn.className   = `btn ${isFixed ? 'btn-o' : 'btn-p'} btn-s`;
+            btn.disabled    = false;
+            // Update local data
+            const v = allVulns.find(x => x.id === id);
+            if (v) { v._display_status = newSt; v._fixed = isFixed; }
+        } else {
+            btn.disabled = false;
+        }
+    } catch (e) { console.error(e); btn.disabled = false; }
+}
+
+function filterVulns() {
+    const q    = document.getElementById('vsearch').value.toLowerCase();
+    const sev  = document.getElementById('sevFilter').value.toLowerCase();
+    const stat = document.getElementById('statFilter').value.toLowerCase();
+
+    const filtered = allVulns.filter(v => {
+        const ds = (v._display_status || v.Status || '').toLowerCase();
+        const matchQ    = !q    || (v.Test||'').toLowerCase().includes(q) || (v.Finding||'').toLowerCase().includes(q) || (v.target_url||'').toLowerCase().includes(q);
+        const matchSev  = !sev  || (v.Severity||'').toLowerCase() === sev;
+        const matchStat = !stat || ds === stat || (v.Status||'').toLowerCase() === stat;
+        return matchQ && matchSev && matchStat;
+    });
+    renderTable(filtered);
+}
+
+loadVulnerabilities();
+setInterval(loadVulnerabilities, 12000);
+</script>
+{% endblock %}

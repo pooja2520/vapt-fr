@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block title %}Scanning - VAPT Scanner Pro{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/scanning.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/scanner.css') }}">
+{% endblock %}
+{% block body %}
+<div id="_main" style="padding-top:56px;margin-left:220px;min-height:100vh;">
+<div class="content">
+  <div class="pt">
+    <h1><i class="fa-solid fa-magnifying-glass"></i> Security Scan</h1>
+    <p>Configure and run comprehensive VAPT scans</p>
+  </div>
+
+  <div class="g2">
+    <!-- LEFT: Scan Config -->
+    <div class="card">
+      <div class="ch"><i class="fa-solid fa-shield-halved"></i> Scan Configuration</div>
+      <div class="cb">
+        <div class="fg"><label>Target URL / IP</label><input type="text" id="targetInput" placeholder="https://example.com or IP address"></div>
+        <div class="fg">
+          <label>Authentication Method</label>
+          <select id="loginType" onchange="handleLoginTypeChange()">
+            <option value="none">No Authentication</option>
+            <option value="basic">HTTP Basic Auth</option>
+            <option value="form">Form-Based Login</option>
+          </select>
+        </div>
+
+        <!-- Basic Auth -->
+        <div id="basicAuthFields" class="auth-fields" style="display:none;">
+          <div class="auth-section-header"><span class="auth-icon">🔐</span><h3>HTTP Basic Authentication</h3></div>
+          <div class="fg"><label>Username</label><input type="text" id="basicUsername" placeholder="Enter username" class="input-field"></div>
+          <div class="fg"><label>Password</label><input type="password" id="basicPassword" placeholder="Enter password" class="input-field"></div>
+        </div>
+
+        <!-- Form Auth -->
+        <div id="formAuthFields" class="auth-fields" style="display:none;">
+          <div class="auth-section-header"><span class="auth-icon">📋</span><h3>Form-Based Authentication</h3></div>
+          <div class="fg"><label>Login Page URL</label><input type="url" id="formLoginUrl" placeholder="https://example.com/login" class="input-field"></div>
+          <div class="fg"><label>Username</label><input type="text" id="formUsername" placeholder="Enter username" class="input-field"></div>
+          <div class="fg"><label>Password</label><input type="password" id="formPassword" placeholder="Enter password" class="input-field"></div>
+          <div class="fg"><label>Username Field Name</label><input type="text" id="formUsernameField" placeholder="username" class="input-field"></div>
+          <div class="fg"><label>Password Field Name</label><input type="text" id="formPasswordField" placeholder="password" class="input-field"></div>
+          <div class="fg"><label>Success Indicator</label><input type="text" id="formSuccessIndicator" placeholder="e.g. Dashboard, Welcome, Logout" class="input-field"></div>
+        </div>
+
+        <!-- Alerts -->
+        <div id="errorMessage"       class="alert alert-error"   style="display:none;"><span class="alert-icon">⚠️</span><span id="errorText"></span></div>
+        <div id="authSuccessMessage" class="alert alert-success" style="display:none;"><span class="alert-icon">✅</span><span id="authSuccessText"></span></div>
+        <div id="progressMessage"    class="alert alert-info"    style="display:none;"><span class="alert-icon">⚙️</span><span id="progressText"></span></div>
+
+        <div style="display:flex;gap:.625rem;flex-wrap:wrap;margin-top:.5rem;">
+          <button id="testAuthBtn" class="btn btn-o" style="display:none;"><i class="fa-solid fa-key"></i> Test Auth</button>
+          <button id="scanBtn" onclick="handleScan()" class="btn btn-p" style="flex:1;justify-content:center;">
+            <span id="btnIcon">🔍</span> <span id="btnText">Start Comprehensive Scan</span>
+          </button>
+          <button id="newScanBtn" onclick="handleNewScan()" class="btn btn-o" style="display:none;"><i class="fa-solid fa-rotate"></i> New Scan</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Scan Progress + Live Logs -->
+    <div class="card">
+      <div class="ch"><i class="fa-solid fa-spinner"></i> Scan Progress</div>
+      <div class="cb">
+        <!-- Progress bar -->
+        <div class="scan-progress">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span id="phaseLabel" style="font-size:.82rem;font-weight:600;color:var(--text);">Ready</span>
+            <span id="pctLabel"   style="font-size:.82rem;font-weight:600;color:var(--blue);">0%</span>
+          </div>
+          <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+        </div>
+
+        <!-- Phase indicators -->
+        <div class="phase-grid">
+          <div class="phase" id="ph1"><i class="fa-solid fa-network-wired"></i>Recon</div>
+          <div class="phase" id="ph2"><i class="fa-solid fa-shield-halved"></i>Headers</div>
+          <div class="phase" id="ph3"><i class="fa-solid fa-magnifying-glass"></i>Crawl</div>
+          <div class="phase" id="ph4"><i class="fa-solid fa-bug"></i>Vulnerability</div>
+        </div>
+
+        <!-- Live scan logs terminal -->
+        <div class="card" style="margin-top:.875rem;margin-bottom:0;">
+          <div class="ch" style="padding:.5rem .875rem;font-size:.8rem;display:flex;justify-content:space-between;align-items:center;">
+            <span><i class="fa-regular fa-file-lines"></i> Scan Logs</span>
+            <span id="logStatus" style="font-size:.7rem;color:var(--text-muted);">Idle</span>
+          </div>
+          <div class="scan-log" id="scanLog"
+               style="height:280px;overflow-y:auto;background:#0f172a;padding:.75rem;font-family:'Courier New',monospace;font-size:.72rem;line-height:1.6;border-radius:0 0 10px 10px;">
+            <span class="log-info" style="color:#64748b;">No scan logs yet. Configure and start a scan.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Test Coverage (shown after scan) -->
+  <div id="testCoverageSection" style="display:none;">
+    <div class="card">
+      <div class="ch"><i class="fa-solid fa-list-check"></i> Test Coverage</div>
+      <div class="cb"><p style="font-size:.825rem;color:var(--text-muted);">Comprehensive VAPT tests were performed across all discovered paths.</p></div>
+    </div>
+  </div>
+
+  <!-- Results (shown after scan) -->
+  <div id="resultsSection" style="display:none;">
+    <div class="card">
+      <div class="ch"><i class="fa-solid fa-bug"></i> Scan Results</div>
+      <div class="cb">
+        <div id="resultsContainer"></div>
+        <div style="margin-top:1rem;text-align:right;">
+          <button id="downloadBtn" onclick="handleDownload()" class="btn btn-p"><i class="fa-solid fa-download"></i> Download Report</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature Cards -->
+  <div class="feat-grid">
+    <div class="feat-card">
+      <h4><i class="fa-solid fa-network-wired" style="color:var(--blue)"></i> Recon &amp; Detection</h4>
+      <div class="feat-item"><i class="fa-solid fa-circle-check"></i> DNS Resolution</div>
+      <div class="feat-item"><i class="fa-solid fa-circle-check"></i> Port Scanning</div>
+      <div class="feat-item"><i class="fa-solid fa-circle-check"></i> Service Detection</div>
+      <div class="feat-item"><i class="fa-solid fa-circle-check"></i> WAF Detection</div>
+      <div class="feat-item"><i class="fa-solid fa-circle-check"></i> Rate Limiting</div>
+    </div>
+    <div class="feat-card">
+      <h4><i class="fa-solid fa-shield-halved" style="color:var(--green)"></i> Headers &amp; Session</h4>
+      <div class="feat-item"><i class="fa-solid fa-circle-check"></i> CSP Headers</div>
+      <div class="feat-item"><i class="fa-solid fa-circle-check"></i> Security Headers</div>
+      <div class="feat-item"><i class="fa-solid fa-circle-check"></i> CSRF Protection</div>
+      <div class="feat-item"><i class="fa-solid fa-circle-check"></i> Session Timeout</div>
+      <div class="feat-item"><i class="fa-solid fa-circle-check"></i> Open Redirect</div>
+    </div>
+    <div class="feat-card">
+      <h4><i class="fa-solid fa-magnifying-glass" style="color:var(--yellow)"></i> Intelligent Crawling</h4>
+      <div class="feat-item"><i class="fa-solid fa-circle-check"></i> URL Discovery</div>
+      <div class="feat-item"><i class="fa-solid fa-circle-check"></i> Form Detection</div>
+      <div class="feat-item"><i class="fa-solid fa-circle-check"></i> API Endpoint Mapping</div>
+      <div class="feat-item"><i class="fa-solid fa-circle-check"></i> JS Analysis</div>
+      <div class="feat-item"><i class="fa-solid fa-circle-check"></i> Sitemap Parsing</div>
+    </div>
+    <div class="feat-card">
+      <h4><i class="fa-solid fa-bug" style="color:var(--red)"></i> Vulnerability Testing</h4>
+      <div class="feat-item"><i class="fa-solid fa-circle-check"></i> SQL Injection</div>
+      <div class="feat-item"><i class="fa-solid fa-circle-check"></i> XSS</div>
+      <div class="feat-item"><i class="fa-solid fa-circle-check"></i> Command Injection</div>
+      <div class="feat-item"><i class="fa-solid fa-circle-check"></i> SSRF</div>
+      <div class="feat-item"><i class="fa-solid fa-circle-check"></i> XXE</div>
+    </div>
+  </div>
+</div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+<script>
+initLayout('/scanning');
+// Bind testAuthBtn after layout is ready
+document.getElementById('testAuthBtn').addEventListener('click', handleTestAuth);
+</script>
+{% endblock %}

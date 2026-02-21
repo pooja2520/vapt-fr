@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Add Target - VAPT Scanner Pro{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/targets.css') }}">
+{% endblock %}
+{% block body %}
+<div id="_main" style="padding-top:56px;margin-left:220px;min-height:100vh;">
+<div class="content">
+  <a href="/targets" class="back-a"><i class="fa-solid fa-arrow-left"></i> Back to Targets</a>
+  <div class="pt">
+    <h1><i class="fa-solid fa-crosshairs"></i> Add New Target</h1>
+    <p>Configure a new scanning target</p>
+  </div>
+  <div class="card" style="max-width:680px;">
+    <div class="cb">
+      <div class="fg"><label>Target Name <span style="color:var(--red)">*</span></label><input type="text" id="tName" placeholder="e.g. Production Web App"></div>
+      <div class="fg"><label>URL / IP Address <span style="color:var(--red)">*</span></label><input type="text" id="tUrl" placeholder="e.g. https://app.example.com"></div>
+      <div class="fg">
+        <label>Target Type</label>
+        <div class="type-btns">
+          <button class="type-btn active" onclick="selType(this)"><i class="fa-solid fa-globe"></i> Web</button>
+          <button class="type-btn" onclick="selType(this)"><i class="fa-solid fa-code"></i> API</button>
+          <button class="type-btn" onclick="selType(this)"><i class="fa-solid fa-wifi"></i> IP</button>
+        </div>
+      </div>
+      <div class="fg"><label>Description</label><textarea id="tDesc" placeholder="Optional description..."></textarea></div>
+      <div class="fg">
+        <label>Authentication</label>
+        <select id="tAuth" onchange="showAuth()">
+          <option value="none">No Authentication</option>
+          <option value="basic">HTTP Basic</option>
+          <option value="form">Form-based</option>
+          <option value="bearer">Bearer Token</option>
+        </select>
+      </div>
+      <div id="authFields" style="display:none;">
+        <div class="fg"><label>Username / Token</label><input type="text" id="tUser" placeholder="Username or token"></div>
+        <div class="fg" id="passField"><label>Password / Secret</label><input type="password" id="tPass" placeholder="Password or secret"></div>
+      </div>
+      <div style="display:flex;gap:.625rem;">
+        <button class="btn btn-p" onclick="addTarget()"><i class="fa-solid fa-plus"></i> Add Target</button>
+        <a href="/targets" class="btn btn-o">Cancel</a>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+initLayout('/targets');
+function selType(b) { document.querySelectorAll('.type-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); }
+function showAuth() {
+  const v = document.getElementById('tAuth').value;
+  document.getElementById('authFields').style.display = v === 'none' ? 'none' : 'block';
+  document.getElementById('passField').style.display = v === 'bearer' ? 'none' : 'block';
+}
+function addTarget() {
+  const n = document.getElementById('tName').value.trim();
+  const u = document.getElementById('tUrl').value.trim();
+  if (!n || !u) { alert('Please enter target name and URL.'); return; }
+  alert('Target added successfully!');
+  window.location.href = '/targets';
+}
+</script>
+{% endblock %}

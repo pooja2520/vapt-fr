@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Report View - VAPT Scanner Pro{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reports.css') }}">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+{% endblock %}
+{% block body %}
+<div id="_main" style="padding-top:56px;margin-left:220px;min-height:100vh;">
+<div class="content">
+  <a href="/reports" class="back-a"><i class="fa-solid fa-arrow-left"></i> Back to Reports</a>
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.625rem;">
+    <div>
+      <h1 style="font-family:'Space Grotesk',sans-serif;font-size:1.375rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:.4rem;"><i class="fa-regular fa-file-lines" style="color:var(--blue)"></i> Full Security Scan - example.com</h1>
+      <p style="font-size:.78rem;color:var(--text-muted);">Generated: 2024-01-15</p>
+    </div>
+    <a href="/download" class="btn btn-p"><i class="fa-solid fa-download"></i> Download Report</a>
+  </div>
+  <div class="sum-grid">
+    <div class="sum-card"><strong style="color:var(--red)">2</strong><small>Critical</small></div>
+    <div class="sum-card"><strong style="color:var(--orange)">5</strong><small>High</small></div>
+    <div class="sum-card"><strong style="color:var(--yellow)">8</strong><small>Medium</small></div>
+    <div class="sum-card"><strong style="color:var(--blue)">12</strong><small>Low</small></div>
+  </div>
+  <div class="g2">
+    <div class="card">
+      <div class="ch"><i class="fa-solid fa-bug"></i> Severity Distribution</div>
+      <div class="cb" style="display:flex;flex-direction:column;align-items:center;">
+        <canvas id="rptChart" style="max-height:160px;max-width:160px;"></canvas>
+        <div style="display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center;margin-top:.625rem;">
+          <span style="font-size:.7rem;color:var(--text-muted);display:flex;align-items:center;gap:.25rem;"><span style="width:9px;height:9px;border-radius:50%;background:var(--red);display:inline-block"></span>Critical</span>
+          <span style="font-size:.7rem;color:var(--text-muted);display:flex;align-items:center;gap:.25rem;"><span style="width:9px;height:9px;border-radius:50%;background:var(--orange);display:inline-block"></span>High</span>
+          <span style="font-size:.7rem;color:var(--text-muted);display:flex;align-items:center;gap:.25rem;"><span style="width:9px;height:9px;border-radius:50%;background:var(--yellow);display:inline-block"></span>Medium</span>
+          <span style="font-size:.7rem;color:var(--text-muted);display:flex;align-items:center;gap:.25rem;"><span style="width:9px;height:9px;border-radius:50%;background:var(--blue);display:inline-block"></span>Low</span>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch"><i class="fa-solid fa-circle-info"></i> Scan Info</div>
+      <div class="cb">
+        <table style="width:100%;font-size:.825rem;">
+          <tr><td style="color:var(--text-muted);padding:.3rem 0;">Target</td><td style="font-weight:600">https://app.example.com</td></tr>
+          <tr><td style="color:var(--text-muted);padding:.3rem 0;">Scan Type</td><td style="font-weight:600">Full VAPT</td></tr>
+          <tr><td style="color:var(--text-muted);padding:.3rem 0;">Duration</td><td style="font-weight:600">45 minutes</td></tr>
+          <tr><td style="color:var(--text-muted);padding:.3rem 0;">URLs Tested</td><td style="font-weight:600">247</td></tr>
+          <tr><td style="color:var(--text-muted);padding:.3rem 0;">Status</td><td><span class="bx bac"><i class="fa-solid fa-circle-check"></i> Completed</span></td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ch"><i class="fa-solid fa-bug"></i> Findings</div>
+    <div class="cb" style="padding:0;overflow-x:auto;">
+      <table class="dt">
+        <thead><tr><th>Vulnerability</th><th>Severity</th><th>OWASP</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td><strong>SQL Injection in Login Form</strong></td><td><span class="bx bc"><i class="fa-solid fa-triangle-exclamation"></i> Critical</span></td><td style="font-size:.72rem;color:var(--text-muted)">A03:2021</td><td><span class="bx bop"><i class="fa-solid fa-circle-exclamation"></i> Open</span></td></tr>
+          <tr><td><strong>Reflected XSS in Search</strong></td><td><span class="bx bh"><i class="fa-solid fa-triangle-exclamation"></i> High</span></td><td style="font-size:.72rem;color:var(--text-muted)">A03:2021</td><td><span class="bx bop"><i class="fa-solid fa-circle-exclamation"></i> Open</span></td></tr>
+          <tr><td><strong>Missing CSP Header</strong></td><td><span class="bx bm"><i class="fa-solid fa-triangle-exclamation"></i> Medium</span></td><td style="font-size:.72rem;color:var(--text-muted)">A05:2021</td><td><span class="bx bop"><i class="fa-solid fa-circle-exclamation"></i> Open</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+initLayout('/reports');
+new Chart(document.getElementById('rptChart'), { type:'doughnut', data:{ datasets:[{data:[2,5,8,12],backgroundColor:['#ef4444','#f97316','#eab308','#2563EB'],borderWidth:2,borderColor:'#fff'}] }, options:{ responsive:true, cutout:'65%', plugins:{legend:{display:false}} } });
+</script>
+{% endblock %}
