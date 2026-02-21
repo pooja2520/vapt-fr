@@ -4,14 +4,16 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/vulnerabilities.css') }}">
 <style>
 /* ── Analytics Strip ───────────────────────────── */
-.analytics-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:.75rem;margin-bottom:1rem;}
+.analytics-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:.75rem;margin-bottom:1rem;}
 .acard{background:#fff;border:1px solid var(--border);border-radius:12px;padding:.875rem 1rem;position:relative;overflow:hidden;}
 .acard::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;border-radius:12px 0 0 12px;}
 .acard.ac-crit::before{background:#ef4444;}
 .acard.ac-high::before{background:#f97316;}
 .acard.ac-med::before{background:#f59e0b;}
-.acard.ac-low::before{background:#3b82f6;}
+.acard.ac-low::before{background:#16a34a;}
 .acard.ac-fix::before{background:#22c55e;}
+.acard.ac-info::before{background:#2563eb;}
+.acard.ac-info .av{color:#2563eb;}
 .acard small{font-size:.68rem;color:var(--text-muted);display:block;margin-bottom:.25rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;}
 .acard .av{font-size:1.5rem;font-weight:800;font-family:'Space Grotesk',sans-serif;line-height:1;}
 .acard .ap{font-size:.72rem;margin-top:.3rem;color:var(--text-muted);}
@@ -19,7 +21,7 @@
 .acard.ac-crit .av{color:#ef4444;}
 .acard.ac-high .av{color:#f97316;}
 .acard.ac-med .av{color:#f59e0b;}
-.acard.ac-low .av{color:#3b82f6;}
+.acard.ac-low .av{color:#16a34a;}
 .acard.ac-fix .av{color:#22c55e;}
 
 /* ── Charts Row ────────────────────────────────── */
@@ -61,8 +63,15 @@
 .filter-row select:focus{border-color:var(--blue);}
 
 /* Severity badge overrides — Low (teal) vs Info (slate) */
-.bsev-low{display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .55rem;border-radius:6px;font-size:.72rem;font-weight:700;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;}
-.bsev-info{display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .55rem;border-radius:6px;font-size:.72rem;font-weight:700;background:#f1f5f9;color:#64748b;border:1px solid #cbd5e1;}
+/* ── Severity badges — distinct professional palette ── */
+.bsev-low{display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .6rem;border-radius:6px;font-size:.72rem;font-weight:700;background:#f0fdf4;color:#16a34a;border:1.5px solid #86efac;}
+.bsev-info{display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .6rem;border-radius:6px;font-size:.72rem;font-weight:700;background:#eff6ff;color:#2563eb;border:1.5px solid #93c5fd;}
+
+/* Override global badge classes for severity consistency */
+.bx.bc{background:#fff1f2;color:#be123c;border:1.5px solid #fda4af;}
+.bx.bh{background:#fff7ed;color:#c2410c;border:1.5px solid #fdba74;}
+.bx.bm{background:#fefce8;color:#a16207;border:1.5px solid #fde047;}
+.bx.bl{background:#f0fdf4;color:#16a34a;border:1.5px solid #86efac;}
 
 /* Report dl button */
 .dl-report{display:inline-flex;align-items:center;gap:.35rem;padding:.35rem .75rem;border-radius:8px;font-size:.75rem;font-weight:600;border:1.5px solid var(--border);background:#fff;cursor:pointer;color:var(--text);text-decoration:none;transition:all .15s;}
@@ -92,7 +101,8 @@
     <div class="acard ac-crit"><small>Critical</small><div class="av" id="ac-crit">0</div><div class="ap"><span id="acp-crit">0</span>% of total</div><div class="prog-bar"><div class="prog-fill" id="apb-crit" style="width:0%;background:#ef4444;"></div></div></div>
     <div class="acard ac-high"><small>High</small><div class="av" id="ac-high">0</div><div class="ap"><span id="acp-high">0</span>% of total</div><div class="prog-bar"><div class="prog-fill" id="apb-high" style="width:0%;background:#f97316;"></div></div></div>
     <div class="acard ac-med"><small>Medium</small><div class="av" id="ac-med">0</div><div class="ap"><span id="acp-med">0</span>% of total</div><div class="prog-bar"><div class="prog-fill" id="apb-med" style="width:0%;background:#f59e0b;"></div></div></div>
-    <div class="acard ac-low"><small>Low / Info</small><div class="av" id="ac-low">0</div><div class="ap"><span id="acp-low">0</span>% of total</div><div class="prog-bar"><div class="prog-fill" id="apb-low" style="width:0%;background:#3b82f6;"></div></div></div>
+    <div class="acard ac-low"><small>Low</small><div class="av" id="ac-low">0</div><div class="ap"><span id="acp-low">0</span>% of total</div><div class="prog-bar"><div class="prog-fill" id="apb-low" style="width:0%;background:#16a34a;"></div></div></div>
+    <div class="acard ac-info"><small>Info</small><div class="av" id="ac-info">0</div><div class="ap"><span id="acp-info">0</span>% of total</div><div class="prog-bar"><div class="prog-fill" id="apb-info" style="width:0%;background:#2563eb;"></div></div></div>
     <div class="acard ac-fix"><small>Fixed</small><div class="av" id="ac-fix">0</div><div class="ap"><span id="acp-fix">0</span>% resolved</div><div class="prog-bar"><div class="prog-fill" id="apb-fix" style="width:0%;background:#22c55e;"></div></div></div>
   </div>
 
@@ -208,7 +218,8 @@ function updateAnalytics() {
   const crit  = vulnOnly.filter(v=>(v.Severity||'').toLowerCase()==='critical').length;
   const high  = vulnOnly.filter(v=>(v.Severity||'').toLowerCase()==='high').length;
   const med   = vulnOnly.filter(v=>(v.Severity||'').toLowerCase()==='medium').length;
-  const low   = vulnOnly.filter(v=>['low','info'].includes((v.Severity||'').toLowerCase())).length;
+  const low   = vulnOnly.filter(v=>(v.Severity||'').toLowerCase()==='low').length;
+  const info  = vulnOnly.filter(v=>(v.Severity||'').toLowerCase()==='info').length;
   const fixed = vulnOnly.filter(v=>(v._display_status||'').toLowerCase()==='fixed').length;
 
   const set = (id, val, pct) => {
@@ -224,6 +235,11 @@ function updateAnalytics() {
   set('ac-high', high, Math.round(high/(total)*100));
   set('ac-med',  med,  Math.round(med/(total)*100));
   set('ac-low',  low,  Math.round(low/(total)*100));
+
+  // Info card
+  document.getElementById('ac-info').textContent = info;
+  document.getElementById('acp-info').textContent = Math.round(info/total*100);
+  document.getElementById('apb-info').style.width = Math.round(info/total*100)+'%';
   // fix percentage of vulnerable-status items only
   const vulnItems = vulnOnly.filter(v=>(v.Status||'').toLowerCase()==='vulnerable').length||1;
   const fixedPct  = Math.round(fixed/vulnItems*100);
