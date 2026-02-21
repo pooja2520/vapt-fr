@@ -261,8 +261,9 @@ function updateCharts() {
     labels: ['Critical','High','Medium','Low','Info'],
     datasets:[{
       data:[crit,high,med,low,info],
-      backgroundColor:['#ef4444','#f97316','#f59e0b','#3b82f6','#94a3b8'],
-      borderWidth:2, borderColor:'#fff'
+      backgroundColor:['#be123c','#c2410c','#a16207','#16a34a','#2563eb'],
+      borderWidth:3, borderColor:'#fff',
+      hoverOffset: 8
     }]
   };
 
@@ -272,7 +273,24 @@ function updateCharts() {
     pieChart = new Chart(ctx,{
       type:'doughnut',
       data: pieData,
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:11},boxWidth:12}}}}
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{position:'right',labels:{font:{size:11},boxWidth:10,padding:12,
+            color:'#374151',
+            generateLabels:(chart)=>{
+              const d=chart.data;
+              return d.labels.map((l,i)=>({
+                text:l,
+                fillStyle:d.datasets[0].backgroundColor[i],
+                strokeStyle:'#fff',
+                lineWidth:2,
+                index:i
+              }));
+            }
+          }}
+        }
+      }
     });
   }
 
@@ -280,12 +298,13 @@ function updateCharts() {
   const groups = {};
   allVulns.forEach(v=>{
     const key = (v.target_url||'unknown').replace(/https?:\/\//,'').split('/')[0] + ' @ ' + (v.scan_date||'?');
-    if(!groups[key]) groups[key] = {crit:0,high:0,med:0,low:0};
+    if(!groups[key]) groups[key] = {crit:0,high:0,med:0,low:0,info:0};
     const sev = (v.Severity||'').toLowerCase();
-    if(sev==='critical') groups[key].crit++;
-    else if(sev==='high') groups[key].high++;
+    if(sev==='critical')    groups[key].crit++;
+    else if(sev==='high')   groups[key].high++;
     else if(sev==='medium') groups[key].med++;
-    else groups[key].low++;
+    else if(sev==='low')    groups[key].low++;
+    else                    groups[key].info++;
   });
 
   const labels = Object.keys(groups).map(k=>{
@@ -296,10 +315,11 @@ function updateCharts() {
   const barData = {
     labels,
     datasets:[
-      {label:'Critical',data:Object.values(groups).map(g=>g.crit),backgroundColor:'#ef4444',borderRadius:4},
-      {label:'High',    data:Object.values(groups).map(g=>g.high),backgroundColor:'#f97316',borderRadius:4},
-      {label:'Medium',  data:Object.values(groups).map(g=>g.med), backgroundColor:'#f59e0b',borderRadius:4},
-      {label:'Low/Info',data:Object.values(groups).map(g=>g.low), backgroundColor:'#3b82f6',borderRadius:4},
+      {label:'Critical',data:Object.values(groups).map(g=>g.crit),backgroundColor:'#be123c',borderRadius:4},
+      {label:'High',    data:Object.values(groups).map(g=>g.high),backgroundColor:'#c2410c',borderRadius:4},
+      {label:'Medium',  data:Object.values(groups).map(g=>g.med), backgroundColor:'#a16207',borderRadius:4},
+      {label:'Low',     data:Object.values(groups).map(g=>g.low), backgroundColor:'#16a34a',borderRadius:4},
+      {label:'Info',    data:Object.values(groups).map(g=>g.info),backgroundColor:'#2563eb',borderRadius:4},
     ]
   };
 
