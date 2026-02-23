@@ -2,25 +2,84 @@
 {% block title %}Target View - VAPT Scanner Pro{% endblock %}
 {% block extra_css %}<link rel="stylesheet" href="{{ url_for('static', filename='css/targets.css') }}">
 <style>
-.scan-hist-row { display:grid; grid-template-columns:2rem 1fr auto auto auto auto auto; align-items:center; gap:.5rem; padding:.55rem .875rem; border-bottom:1px solid var(--border); font-size:.78rem; }
-.scan-hist-row:last-child { border-bottom:none; }
-.scan-hist-row:nth-child(even) { background:#f9fafb; }
-.scan-num { font-weight:700; color:var(--text-muted); text-align:center; }
-.scan-time-label { color:var(--text); font-weight:600; }
-.scan-latest-badge { display:inline-flex;align-items:center;gap:.25rem;padding:.15rem .5rem;background:#eff6ff;color:#2563eb;border:1px solid #93c5fd;border-radius:5px;font-size:.68rem;font-weight:700; }
-.no-data { text-align:center;padding:2rem;color:var(--text-muted);font-size:.825rem; }
-.pulse { display:inline-block;width:8px;height:8px;background:#22c55e;border-radius:50%;animation:pulse 1.5s infinite;margin-right:.3rem; }
-@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.3)} }
-.vuln-sum { display:grid; grid-template-columns:repeat(5,1fr); gap:.75rem; }
 /* ── Severity & status badge colours ── */
 .bx.bc  { background:#fff1f2; color:#be123c; border:1.5px solid #fda4af; }
 .bx.bh  { background:#fff7ed; color:#c2410c; border:1.5px solid #fdba74; }
 .bx.bm  { background:#fefce8; color:#a16207; border:1.5px solid #fde047; }
-.bx.bl  { background:#f0fdf4; color:#16a34a; border:1.5px solid #86efac; }  /* Low  — GREEN */
-.bx.bi  { background:#eff6ff; color:#2563eb; border:1.5px solid #93c5fd; }  /* Info — BLUE  */
+.bx.bl  { background:#f0fdf4; color:#16a34a; border:1.5px solid #86efac; }
+.bx.bi  { background:#eff6ff; color:#2563eb; border:1.5px solid #93c5fd; }
 .bx.bac { background:#f0fdf4; color:#15803d; border:1.5px solid #86efac; }
 .bx.bop { background:#fef2f2; color:#b91c1c; border:1.5px solid #fca5a5; }
-.bx.bcp { background:#eff6ff; color:#1d4ed8; border:1.5px solid #93c5fd; }  /* complete */
+.bx.bcp { background:#eff6ff; color:#1d4ed8; border:1.5px solid #93c5fd; }
+
+/* ── Scan History ── */
+.scan-hist-row {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr auto auto auto auto auto auto;
+  align-items: center;
+  gap: .5rem;
+  padding: .65rem .875rem;
+  border-bottom: 1px solid var(--border);
+  font-size: .78rem;
+  cursor: pointer;
+  transition: background .15s;
+  user-select: none;
+}
+.scan-hist-row:hover { background: #f0f9ff; }
+.scan-hist-row.active { background: #eff6ff; border-left: 3px solid var(--blue); }
+.scan-hist-row:last-of-type { border-bottom: none; }
+.scan-num { font-weight: 700; color: var(--text-muted); text-align: center; }
+.scan-time-label { color: var(--text); font-weight: 600; }
+.scan-latest-badge { display:inline-flex;align-items:center;gap:.25rem;padding:.15rem .5rem;background:#eff6ff;color:#2563eb;border:1px solid #93c5fd;border-radius:5px;font-size:.68rem;font-weight:700; }
+.scan-chevron { color: var(--text-muted); font-size: .72rem; transition: transform .25s; }
+.scan-chevron.open { transform: rotate(180deg); }
+
+/* ── Expandable detail panel ── */
+.scan-detail-panel {
+  display: none;
+  background: #f8fafc;
+  border-bottom: 1px solid var(--border);
+  border-left: 3px solid var(--blue);
+  padding: .875rem 1rem .875rem 1.25rem;
+  animation: slideDown .2s ease-out;
+}
+.scan-detail-panel.open { display: block; }
+@keyframes slideDown { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+
+.scan-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(6,1fr);
+  gap: .5rem;
+  margin-bottom: .75rem;
+}
+.sd-cell {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: .5rem .625rem;
+  text-align: center;
+}
+.sd-cell small { display: block; font-size: .65rem; color: var(--text-muted); margin-bottom: .15rem; text-transform: uppercase; letter-spacing: .04em; }
+.sd-cell strong { font-size: 1.1rem; font-weight: 700; }
+
+/* Progress bar in detail panel */
+.sd-prog-row { display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem;font-size:.72rem; }
+.sd-prog-lbl { width: 55px; color: var(--text-muted); font-weight: 600; }
+.sd-prog-bar { flex:1; background:#e2e8f0; border-radius:6px; height:7px; overflow:hidden; }
+.sd-prog-fill { height:100%; border-radius:6px; transition:width .6s ease; }
+.sd-prog-pct { width:36px; text-align:right; font-weight:700; color:var(--text-muted); }
+
+/* Success / vuln rate */
+.sd-rates { display:flex; gap:1rem; margin-top:.5rem; flex-wrap:wrap; }
+.sd-rate-item { display:flex; align-items:center; gap:.35rem; font-size:.75rem; font-weight:600; }
+.sd-rate-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+
+/* No data */
+.no-data { text-align:center;padding:2rem;color:var(--text-muted);font-size:.825rem; }
+
+/* vuln-sum */
+.vuln-sum { display:grid; grid-template-columns:repeat(5,1fr); gap:.75rem; }
+
 /* Live update dot */
 .live-update { display:inline-flex;align-items:center;gap:.35rem;font-size:.72rem;color:var(--text-muted);font-weight:600; }
 .live-update .dot { width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 0 rgba(34,197,94,.4);animation:livepulse 1.8s infinite; }
@@ -96,14 +155,15 @@
 initLayout('/targets');
 const TARGET_ID = {{ target_id }};
 
+// ── Badge helpers ────────────────────────────────────────────
 function sevBadge(s){
   s=(s||'').toLowerCase();
   const m={
-    critical:['bc','fa-triangle-exclamation','Critical'],
-    high:    ['bh','fa-triangle-exclamation','High'],
-    medium:  ['bm','fa-triangle-exclamation','Medium'],
-    low:     ['bl','fa-shield-halved','Low'],
-    info:    ['bi','fa-shield-halved','Info']
+    critical: ['bc','fa-triangle-exclamation','Critical'],
+    high:     ['bh','fa-triangle-exclamation','High'],
+    medium:   ['bm','fa-triangle-exclamation','Medium'],
+    low:      ['bl','fa-shield-halved','Low'],
+    info:     ['bi','fa-shield-halved','Info'],
   };
   const [c,i,l]=m[s]||['bi','fa-shield-halved',s||'Info'];
   return `<span class="bx ${c}"><i class="fa-solid ${i}"></i> ${l}</span>`;
@@ -118,57 +178,138 @@ function statusBadge(s){
 }
 function typeIcon(t){t=(t||'').toLowerCase();return t==='api'?'fa-code':t==='ip'?'fa-wifi':'fa-globe';}
 function typeClass(t){t=(t||'').toLowerCase();return t==='api'?'bap':t==='ip'?'bip':'bwb';}
+function fmtRuntime(sec){ if(!sec&&sec!==0) return '—'; if(sec<60) return sec+'s'; return Math.floor(sec/60)+'m '+(sec%60?sec%60+'s':''); }
 
+// ── Toggle scan detail panel ─────────────────────────────────
+function toggleScanPanel(idx) {
+  const row    = document.getElementById('shr-'+idx);
+  const panel  = document.getElementById('shp-'+idx);
+  const chev   = document.getElementById('shc-'+idx);
+  if (!panel) return;
+  const open   = panel.classList.toggle('open');
+  row.classList.toggle('active', open);
+  chev.classList.toggle('open', open);
+}
+
+// ── Render scan history ──────────────────────────────────────
+function renderScanHistory(hist) {
+  const histEl = document.getElementById('scanHistoryBody');
+  if (!hist || !hist.length) {
+    histEl.innerHTML = `<div class="no-data"><i class="fa-solid fa-clock-rotate-left" style="font-size:1.5rem;display:block;margin-bottom:.4rem;color:var(--border)"></i>No scans run yet for this target.</div>`;
+    return;
+  }
+
+  histEl.innerHTML = hist.map((h, i) => {
+    const num     = hist.length - i;
+    const total   = h.total || 0;
+    const crit    = h.critical || 0;
+    const high    = h.high     || 0;
+    const med     = h.medium   || 0;
+    const low     = h.low      || 0;
+    const info    = total - crit - high - med - low;
+    const safeN   = med + low + Math.max(0, info);
+    const succPct = total > 0 ? Math.round(safeN / total * 100) : 100;
+    const vulnPct = total > 0 ? Math.round((crit + high) / total * 100) : 0;
+    const rt      = fmtRuntime(h.runtime_seconds);
+    const sColor  = succPct >= 80 ? '#22c55e' : succPct >= 50 ? '#eab308' : '#ef4444';
+    const vColor  = vulnPct <= 10 ? '#22c55e' : vulnPct <= 30 ? '#eab308' : '#ef4444';
+
+    // Severity % for mini bars
+    const pct = (n) => total > 0 ? Math.round(n / total * 100) : 0;
+
+    return `
+      <!-- Clickable header row -->
+      <div class="scan-hist-row" id="shr-${i}" onclick="toggleScanPanel(${i})">
+        <span class="scan-num">#${num}</span>
+        <span class="scan-time-label">
+          <i class="fa-regular fa-clock" style="color:var(--text-muted);margin-right:.3rem;"></i>${h.scan_time || h.date || '—'}
+        </span>
+        ${i === 0 ? '<span class="scan-latest-badge"><i class="fa-solid fa-star"></i> Latest</span>' : '<span></span>'}
+        <span class="bx bc" style="min-width:2.5rem;justify-content:center;font-size:.7rem;">${crit}C</span>
+        <span class="bx bh" style="min-width:2.5rem;justify-content:center;font-size:.7rem;">${high}H</span>
+        <span class="bx bm" style="min-width:2.5rem;justify-content:center;font-size:.7rem;">${med}M</span>
+        <span style="font-size:.74rem;color:var(--text-muted);">${total} total</span>
+        <i class="fa-solid fa-chevron-down scan-chevron ${i === 0 ? 'open' : ''}" id="shc-${i}"></i>
+      </div>
+
+      <!-- Expandable detail panel -->
+      <div class="scan-detail-panel ${i === 0 ? 'open' : ''}" id="shp-${i}">
+        <!-- Stat cells -->
+        <div class="scan-detail-grid">
+          <div class="sd-cell"><small>Date / Time</small><strong style="font-size:.82rem;font-weight:600;">${h.scan_time || h.date || '—'}</strong></div>
+          <div class="sd-cell"><small>Runtime</small><strong style="color:var(--blue);">${rt}</strong></div>
+          <div class="sd-cell"><small>Total</small><strong style="color:var(--text);">${total}</strong></div>
+          <div class="sd-cell"><small>Critical</small><strong style="color:#ef4444;">${crit}</strong></div>
+          <div class="sd-cell"><small>High</small><strong style="color:#f97316;">${high}</strong></div>
+          <div class="sd-cell"><small>Medium</small><strong style="color:#eab308;">${med}</strong></div>
+        </div>
+
+        <!-- Severity breakdown bars -->
+        <div style="background:#fff;border:1px solid var(--border);border-radius:9px;padding:.75rem 1rem;margin-bottom:.625rem;">
+          <p style="font-size:.72rem;font-weight:700;color:var(--text);margin-bottom:.5rem;"><i class="fa-solid fa-bars-progress" style="color:var(--blue);margin-right:.3rem;"></i>Severity Breakdown</p>
+          <div class="sd-prog-row"><span class="sd-prog-lbl" style="color:#ef4444;">Critical</span><div class="sd-prog-bar"><div class="sd-prog-fill" style="width:${pct(crit)}%;background:#ef4444;"></div></div><span class="sd-prog-pct">${pct(crit)}%</span></div>
+          <div class="sd-prog-row"><span class="sd-prog-lbl" style="color:#f97316;">High</span><div class="sd-prog-bar"><div class="sd-prog-fill" style="width:${pct(high)}%;background:#f97316;"></div></div><span class="sd-prog-pct">${pct(high)}%</span></div>
+          <div class="sd-prog-row"><span class="sd-prog-lbl" style="color:#eab308;">Medium</span><div class="sd-prog-bar"><div class="sd-prog-fill" style="width:${pct(med)}%;background:#eab308;"></div></div><span class="sd-prog-pct">${pct(med)}%</span></div>
+          <div class="sd-prog-row"><span class="sd-prog-lbl" style="color:#22c55e;">Low</span><div class="sd-prog-bar"><div class="sd-prog-fill" style="width:${pct(low)}%;background:#22c55e;"></div></div><span class="sd-prog-pct">${pct(low)}%</span></div>
+        </div>
+
+        <!-- Success & Vuln rates -->
+        <div class="sd-rates">
+          <div class="sd-rate-item">
+            <span class="sd-rate-dot" style="background:${sColor};"></span>
+            <span style="color:var(--text-muted);">Success Rate:</span>
+            <span style="color:${sColor};font-size:.9rem;">${succPct}%</span>
+            <span style="font-size:.68rem;color:var(--text-muted);">(non-critical findings)</span>
+          </div>
+          <div class="sd-rate-item">
+            <span class="sd-rate-dot" style="background:${vColor};"></span>
+            <span style="color:var(--text-muted);">Vuln Rate:</span>
+            <span style="color:${vColor};font-size:.9rem;">${vulnPct}%</span>
+            <span style="font-size:.68rem;color:var(--text-muted);">(critical + high)</span>
+          </div>
+          ${h.report ? `<a href="/reports" class="btn btn-o btn-s" style="margin-left:auto;"><i class="fa-regular fa-file-lines"></i> View Report</a>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── Main load ────────────────────────────────────────────────
 async function loadTarget(){
   try{
-    const res=await fetch(`/api/targets/${TARGET_ID}`);
-    const data=await res.json();
-    if(data.status!=='ok') return;
-    const t=data.target;
+    const res  = await fetch(`/api/targets/${TARGET_ID}`);
+    const data = await res.json();
+    if(data.status !== 'ok') return;
+    const t = data.target;
 
-    document.getElementById('tName').textContent=t.name||'—';
-    document.getElementById('tUrl').textContent=t.url||'—';
-    document.getElementById('tDesc').textContent=t.description||'No description provided.';
+    document.getElementById('tName').textContent = t.name || '—';
+    document.getElementById('tUrl').textContent  = t.url  || '—';
+    document.getElementById('tDesc').textContent = t.description || 'No description provided.';
 
-    const tc=typeClass(t.type),ti=typeIcon(t.type);
-    document.getElementById('mType').innerHTML=`<span class="bx ${tc}"><i class="fa-solid ${ti}"></i> ${t.type||'Web'}</span>`;
-    const sc=(t.status==='Active')?'bac':'bpd', si=(t.status==='Active')?'fa-circle-check':'fa-clock';
-    document.getElementById('mStatus').innerHTML=`<span class="bx ${sc}"><i class="fa-solid ${si}"></i> ${t.status||'Active'}</span>`;
-    document.getElementById('mLastScan').textContent=t.last_scan||'Never';
-    document.getElementById('mScanCount').textContent=t.scan_count||0;
+    const tc = typeClass(t.type), ti = typeIcon(t.type);
+    document.getElementById('mType').innerHTML   = `<span class="bx ${tc}"><i class="fa-solid ${ti}"></i> ${t.type||'Web'}</span>`;
+    const sc = (t.status==='Active') ? 'bac' : 'bpd';
+    const si = (t.status==='Active') ? 'fa-circle-check' : 'fa-clock';
+    document.getElementById('mStatus').innerHTML = `<span class="bx ${sc}"><i class="fa-solid ${si}"></i> ${t.status||'Active'}</span>`;
+    document.getElementById('mLastScan').textContent  = t.last_scan  || 'Never';
+    document.getElementById('mScanCount').textContent = t.scan_count || 0;
 
-    const vc=t.vuln_counts||{};
-    document.getElementById('vc-crit').textContent=vc.critical||0;
-    document.getElementById('vc-high').textContent=vc.high||0;
-    document.getElementById('vc-med').textContent=vc.medium||0;
-    document.getElementById('vc-low').textContent=vc.low||0;
-    document.getElementById('vc-total').textContent=t.total_vulns||0;
+    const vc = t.vuln_counts || {};
+    document.getElementById('vc-crit').textContent  = vc.critical || 0;
+    document.getElementById('vc-high').textContent  = vc.high     || 0;
+    document.getElementById('vc-med').textContent   = vc.medium   || 0;
+    document.getElementById('vc-low').textContent   = vc.low      || 0;
+    document.getElementById('vc-total').textContent = t.total_vulns || 0;
 
-    // Scan history
-    const hist=t.scan_history||[];
-    const histEl=document.getElementById('scanHistoryBody');
-    if(!hist.length){
-      histEl.innerHTML=`<div class="no-data"><i class="fa-solid fa-clock-rotate-left" style="font-size:1.5rem;display:block;margin-bottom:.4rem;color:var(--border)"></i>No scans run yet for this target.</div>`;
-    } else {
-      histEl.innerHTML=hist.map((h,i)=>`
-        <div class="scan-hist-row">
-          <span class="scan-num">#${hist.length-i}</span>
-          <span class="scan-time-label"><i class="fa-regular fa-clock" style="color:var(--text-muted);margin-right:.3rem;"></i>${h.scan_time}</span>
-          ${i===0?'<span class="scan-latest-badge"><i class="fa-solid fa-star"></i> Latest</span>':'<span></span>'}
-          <span class="bx bc" style="min-width:2.5rem;justify-content:center;">${h.critical}C</span>
-          <span class="bx bh" style="min-width:2.5rem;justify-content:center;">${h.high}H</span>
-          <span class="bx bm" style="min-width:2.5rem;justify-content:center;">${h.medium}M</span>
-          <span style="font-size:.75rem;color:var(--text-muted);">${h.total} total</span>
-        </div>`).join('');
-    }
+    // Scan history — clickable rows
+    renderScanHistory(t.scan_history || []);
 
     // Recent vulns
-    const vulns=t.recent_vulns||[];
-    const tbody=document.getElementById('vulnBody');
+    const vulns = t.recent_vulns || [];
+    const tbody = document.getElementById('vulnBody');
     if(!vulns.length){
-      tbody.innerHTML=`<tr><td colspan="5" class="no-data" style="padding:1.5rem;">No vulnerabilities recorded yet.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="5" class="no-data" style="padding:1.5rem;">No vulnerabilities recorded yet.</td></tr>`;
     } else {
-      tbody.innerHTML=vulns.map(v=>`
+      tbody.innerHTML = vulns.map(v => `
         <tr>
           <td><strong>${v.test}</strong><br><small style="color:var(--text-muted);">${(v.finding||'').slice(0,90)}${v.finding&&v.finding.length>90?'…':''}</small></td>
           <td>${sevBadge(v.severity)}</td>
@@ -177,7 +318,7 @@ async function loadTarget(){
           <td><a href="/vulnerabilities" class="btn btn-o btn-s"><i class="fa-regular fa-eye"></i></a></td>
         </tr>`).join('');
     }
-  } catch(e){ console.error('loadTarget error:',e); }
+  } catch(e){ console.error('loadTarget error:', e); }
 }
 
 loadTarget();
