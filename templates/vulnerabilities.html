@@ -189,7 +189,7 @@ function sevClass(s){
 function sevIcon(s){
   s=(s||'').toLowerCase();
   if(s==='critical'||s==='high'||s==='medium') return 'fa-triangle-exclamation';
-  if(s==='low') return 'fa-arrow-down';
+  if(s==='low') return 'fa-shield-halved';
   return 'fa-shield-halved';
 }
 function statClass(s){s=(s||'').toLowerCase();if(s==='vulnerable')return'bc';if(s==='fixed')return'bf';if(s==='complete'||s==='success'||s==='secure')return'bac';return'bop';}
