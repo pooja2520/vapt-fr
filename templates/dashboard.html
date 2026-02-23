@@ -5,7 +5,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 {% endblock %}
 {% block body %}
-<div id="_main" style="padding-top:56px;min-height:100vh;">
+<div id="_main" style="padding-top:56px;min-height:100vh;transition:margin-left .25s ease;">
 <div class="content">
 
   <!-- Header -->
@@ -58,8 +58,8 @@
     </div>
     <div class="sc">
       <div class="sc-top"><i class="fa-solid fa-circle-info sc-icon" style="color:#2563EB"></i><span class="sc-badge sc-badge-blue">Info</span></div>
-      <h2 id="statInfo" style="color:#2563EB">—</h2>
-      <p>Informational</p>
+      <h2 id="statInfo" style="color:#2563EB">0</h2>
+      <p>Informational <span id="pctInfo" class="sc-pct"></span></p>
     </div>
   </div>
 
@@ -109,7 +109,6 @@
           <div class="sev-row"><span class="sev-lbl" style="color:#f97316;">High</span><div class="mini-bar"><div id="barHigh" class="mini-fill" style="width:0%;background:#f97316;"></div></div><span id="barPctHigh" class="sev-pct">0%</span></div>
           <div class="sev-row"><span class="sev-lbl" style="color:#eab308;">Medium</span><div class="mini-bar"><div id="barMedium" class="mini-fill" style="width:0%;background:#eab308;"></div></div><span id="barPctMedium" class="sev-pct">0%</span></div>
           <div class="sev-row"><span class="sev-lbl" style="color:#22c55e;">Low</span><div class="mini-bar"><div id="barLow" class="mini-fill" style="width:0%;background:#22c55e;"></div></div><span id="barPctLow" class="sev-pct">0%</span></div>
-          <div class="sev-row"><span class="sev-lbl" style="color:#2563eb;">Info</span><div class="mini-bar"><div id="barInfo" class="mini-fill" style="width:0%;background:#2563eb;"></div></div><span id="barPctInfo" class="sev-pct">0%</span></div>
         </div>
       </div>
     </div>
@@ -199,9 +198,9 @@ function mkBadge(sev) {
 
 // ── Donut ───────────────────────────────────────────────────────
 function renderDonut(s) {
-    const vals   = [s.critical, s.high, s.medium, s.low, s.info||0];
-    const labels = ['Critical','High','Medium','Low','Info'];
-    const colors = [SEV_COLORS.critical, SEV_COLORS.high, SEV_COLORS.medium, SEV_COLORS.low, SEV_COLORS.info];
+    const vals   = [s.critical, s.high, s.medium, s.low];
+    const labels = ['Critical','High','Medium','Low'];
+    const colors = [SEV_COLORS.critical, SEV_COLORS.high, SEV_COLORS.medium, SEV_COLORS.low];
     const total  = vals.reduce((a,b)=>a+b,0);
     document.getElementById('donutTotal').textContent = total;
     document.getElementById('noScanMsg').style.display = total===0 ? 'block' : 'none';
@@ -230,31 +229,27 @@ function renderDonut(s) {
         </span>`).join('');
 }
 
-// ── Bar chart — group by scan index so same-URL scans show side-by-side ────
+// ── Bar chart ───────────────────────────────────────────────────
 function renderBarChart(bc) {
     if (!bc||!bc.labels||!bc.labels.length) return;
     document.getElementById('barChartCard').style.display = 'block';
-
-    // Build labels as "#1 url", "#2 url" etc so same URL shows distinct bars
-    const labels = bc.labels.map((lbl, i) => `#${bc.labels.length - i} ${lbl}`);
-
     const ds = [
         { label:'Critical + High', data:bc.high,   backgroundColor:'#ef444455', borderColor:'#ef4444', borderWidth:2, borderRadius:4 },
         { label:'Medium',          data:bc.medium, backgroundColor:'#eab30855', borderColor:'#eab308', borderWidth:2, borderRadius:4 },
         { label:'Low',             data:bc.low,    backgroundColor:'#22c55e55', borderColor:'#22c55e', borderWidth:2, borderRadius:4 },
     ];
     if (barChart) {
-        barChart.data.labels = labels;
+        barChart.data.labels = bc.labels;
         barChart.data.datasets.forEach((d,i)=>d.data=ds[i].data);
         barChart.update();
     } else {
         barChart = new Chart(document.getElementById('barC'), {
-            type:'bar', data:{ labels, datasets:ds },
+            type:'bar', data:{ labels:bc.labels, datasets:ds },
             options:{
                 responsive:true,
                 plugins:{ legend:{ position:'bottom', labels:{ font:{size:11} }}},
                 scales:{
-                    x:{ stacked:false, grid:{display:false}, ticks:{font:{size:10}, maxRotation:30} },
+                    x:{ stacked:false, grid:{display:false}, ticks:{font:{size:11}} },
                     y:{ beginAtZero:true, ticks:{stepSize:1,font:{size:11}}, grid:{color:'#f1f5f9'} }
                 }
             }
@@ -305,17 +300,16 @@ async function loadDashboard() {
         const data = await res.json();
         const s    = data.stats;
 
-        // Stat cards
-        document.getElementById('statTotal').textContent    = s.total;
-        document.getElementById('statCritical').textContent = s.critical;
-        document.getElementById('statHigh').textContent     = s.high;
-        document.getElementById('statMedium').textContent   = s.medium;
-        document.getElementById('statLow').textContent      = s.low;
-        document.getElementById('statInfo').textContent     = s.info ?? '—';
+        document.getElementById('statTotal').textContent    = s.total    ?? 0;
+        document.getElementById('statCritical').textContent = s.critical ?? 0;
+        document.getElementById('statHigh').textContent     = s.high     ?? 0;
+        document.getElementById('statMedium').textContent   = s.medium   ?? 0;
+        document.getElementById('statLow').textContent      = s.low      ?? 0;
+        document.getElementById('statInfo').textContent     = s.info     ?? 0;
 
         // Severity % badges on cards
         const sp = data.severity_pct || {};
-        ['Critical','High','Medium','Low'].forEach(k => {
+        ['Critical','High','Medium','Low','Info'].forEach(k => {
             const el = document.getElementById('pct'+k);
             if (el) el.textContent = sp[k.toLowerCase()] ? sp[k.toLowerCase()]+'%' : '';
         });
@@ -332,12 +326,10 @@ async function loadDashboard() {
         // Severity breakdown bars
         if (s.total > 0) {
             document.getElementById('sevBreakdown').style.display = 'block';
-            [['Critical','#ef4444'],['High','#f97316'],['Medium','#eab308'],['Low','#22c55e'],['Info','#2563eb']].forEach(([k])=>{
+            [['Critical','#ef4444'],['High','#f97316'],['Medium','#eab308'],['Low','#22c55e']].forEach(([k])=>{
                 const pct = sp[k.toLowerCase()] || 0;
-                const barEl = document.getElementById('bar'+k);
-                const pctEl = document.getElementById('barPct'+k);
-                if (barEl) barEl.style.width = pct+'%';
-                if (pctEl) pctEl.textContent = pct+'%';
+                document.getElementById('bar'+k).style.width = pct+'%';
+                document.getElementById('barPct'+k).textContent = pct+'%';
             });
         }
 
