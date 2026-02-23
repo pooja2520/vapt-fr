@@ -12,6 +12,19 @@
 .pulse { display:inline-block;width:8px;height:8px;background:#22c55e;border-radius:50%;animation:pulse 1.5s infinite;margin-right:.3rem; }
 @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.3)} }
 .vuln-sum { display:grid; grid-template-columns:repeat(5,1fr); gap:.75rem; }
+/* ── Severity & status badge colours ── */
+.bx.bc  { background:#fff1f2; color:#be123c; border:1.5px solid #fda4af; }
+.bx.bh  { background:#fff7ed; color:#c2410c; border:1.5px solid #fdba74; }
+.bx.bm  { background:#fefce8; color:#a16207; border:1.5px solid #fde047; }
+.bx.bl  { background:#f0fdf4; color:#16a34a; border:1.5px solid #86efac; }  /* Low  — GREEN */
+.bx.bi  { background:#eff6ff; color:#2563eb; border:1.5px solid #93c5fd; }  /* Info — BLUE  */
+.bx.bac { background:#f0fdf4; color:#15803d; border:1.5px solid #86efac; }
+.bx.bop { background:#fef2f2; color:#b91c1c; border:1.5px solid #fca5a5; }
+.bx.bcp { background:#eff6ff; color:#1d4ed8; border:1.5px solid #93c5fd; }  /* complete */
+/* Live update dot */
+.live-update { display:inline-flex;align-items:center;gap:.35rem;font-size:.72rem;color:var(--text-muted);font-weight:600; }
+.live-update .dot { width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 0 rgba(34,197,94,.4);animation:livepulse 1.8s infinite; }
+@keyframes livepulse { 0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.4);} 50%{box-shadow:0 0 0 6px rgba(34,197,94,0);} }
 </style>
 {% endblock %}
 {% block body %}
@@ -26,7 +39,7 @@
       <p id="tUrl" style="font-size:.78rem;color:var(--text-muted);">—</p>
     </div>
     <div style="display:flex;gap:.5rem;align-items:center;">
-      <span style="font-size:.7rem;color:var(--text-muted);"><span class="pulse"></span>Live</span>
+      <span class="live-update"><span class="dot"></span>Live Updates</span>
       <a href="/targets/{{ target_id }}/edit" class="btn btn-o"><i class="fa-regular fa-pen-to-square"></i> Edit</a>
       <a href="/scanning" class="btn btn-p"><i class="fa-solid fa-play"></i> Start Scan</a>
     </div>
@@ -85,14 +98,22 @@ const TARGET_ID = {{ target_id }};
 
 function sevBadge(s){
   s=(s||'').toLowerCase();
-  const m={critical:['bc','fa-triangle-exclamation','Critical'],high:['bh','fa-triangle-exclamation','High'],medium:['bm','fa-triangle-exclamation','Medium'],low:['bl','fa-arrow-down','Low']};
-  const [c,i,l]=m[s]||['bsev-info','fa-shield-halved',s||'Info'];
+  const m={
+    critical:['bc','fa-triangle-exclamation','Critical'],
+    high:    ['bh','fa-triangle-exclamation','High'],
+    medium:  ['bm','fa-triangle-exclamation','Medium'],
+    low:     ['bl','fa-shield-halved','Low'],
+    info:    ['bi','fa-shield-halved','Info']
+  };
+  const [c,i,l]=m[s]||['bi','fa-shield-halved',s||'Info'];
   return `<span class="bx ${c}"><i class="fa-solid ${i}"></i> ${l}</span>`;
 }
 function statusBadge(s){
   s=(s||'').toLowerCase();
   if(s==='vulnerable') return `<span class="bx bop"><i class="fa-solid fa-circle-exclamation"></i> Vulnerable</span>`;
+  if(s==='fixed')      return `<span class="bx bac"><i class="fa-solid fa-circle-check"></i> Fixed</span>`;
   if(s==='secure')     return `<span class="bx bac"><i class="fa-solid fa-circle-check"></i> Secure</span>`;
+  if(s==='complete')   return `<span class="bx bcp"><i class="fa-solid fa-circle-check"></i> Complete</span>`;
   return `<span class="bx" style="background:#f3f4f6;color:#374151;border:1px solid #d1d5db;">${s||'—'}</span>`;
 }
 function typeIcon(t){t=(t||'').toLowerCase();return t==='api'?'fa-code':t==='ip'?'fa-wifi':'fa-globe';}
