@@ -22,11 +22,10 @@
   border-bottom: 1px solid var(--border);
   font-size: .78rem;
   cursor: pointer;
-  transition: background .15s;
   user-select: none;
 }
-.scan-hist-row:hover { background: #f0f9ff; }
 .scan-hist-row.active { background: #eff6ff; border-left: 3px solid var(--blue); }
+.scan-hist-row:not(.active):hover .scan-chevron { color: var(--blue); }
 .scan-hist-row:last-of-type { border-bottom: none; }
 .scan-num { font-weight: 700; color: var(--text-muted); text-align: center; }
 .scan-time-label { color: var(--text); font-weight: 600; }
