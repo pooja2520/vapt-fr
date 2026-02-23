@@ -15,9 +15,9 @@
 /* ── Scan History ── */
 .scan-hist-row {
   display: grid;
-  grid-template-columns: 2.5rem 1fr auto auto auto auto auto auto;
+  grid-template-columns: 2.5rem 1fr auto auto auto auto auto auto auto auto;
   align-items: center;
-  gap: .5rem;
+  gap: .4rem;
   padding: .65rem .875rem;
   border-bottom: 1px solid var(--border);
   font-size: .78rem;
@@ -113,11 +113,12 @@
   <div class="card">
     <div class="ch"><i class="fa-solid fa-triangle-exclamation"></i> Vulnerability Summary <small style="font-weight:400;font-size:.72rem;margin-left:.5rem;color:rgba(255,255,255,.8)">latest scan</small></div>
     <div class="cb">
-      <div class="vuln-sum">
+      <div class="vuln-sum" style="grid-template-columns:repeat(6,1fr);">
         <div class="vs"><strong id="vc-crit" style="color:#be123c">0</strong><small>Critical</small></div>
         <div class="vs"><strong id="vc-high" style="color:#c2410c">0</strong><small>High</small></div>
         <div class="vs"><strong id="vc-med"  style="color:#a16207">0</strong><small>Medium</small></div>
         <div class="vs"><strong id="vc-low"  style="color:#16a34a">0</strong><small>Low</small></div>
+        <div class="vs"><strong id="vc-info" style="color:#2563eb">0</strong><small>Info</small></div>
         <div class="vs"><strong id="vc-total" style="color:var(--blue)">0</strong><small>Total</small></div>
       </div>
     </div>
@@ -239,6 +240,8 @@ function renderScanHistory(hist) {
         <span class="bx bc" style="min-width:2.5rem;justify-content:center;font-size:.7rem;">${crit}C</span>
         <span class="bx bh" style="min-width:2.5rem;justify-content:center;font-size:.7rem;">${high}H</span>
         <span class="bx bm" style="min-width:2.5rem;justify-content:center;font-size:.7rem;">${med}M</span>
+        <span class="bx bl" style="min-width:2.5rem;justify-content:center;font-size:.7rem;">${low}L</span>
+        <span class="bx bi" style="min-width:2.5rem;justify-content:center;font-size:.7rem;">${Math.max(0,info)}I</span>
         <span style="font-size:.74rem;color:var(--text-muted);">${total} total</span>
         <i class="fa-solid fa-chevron-down scan-chevron ${wasOpen ? 'open' : ''}" id="shc-${i}"></i>
       </div>
@@ -258,6 +261,7 @@ function renderScanHistory(hist) {
           <div class="sd-prog-row"><span class="sd-prog-lbl" style="color:#f97316;">High</span><div class="sd-prog-bar"><div class="sd-prog-fill" style="width:${pct(high)}%;background:#f97316;"></div></div><span class="sd-prog-pct">${pct(high)}%</span></div>
           <div class="sd-prog-row"><span class="sd-prog-lbl" style="color:#eab308;">Medium</span><div class="sd-prog-bar"><div class="sd-prog-fill" style="width:${pct(med)}%;background:#eab308;"></div></div><span class="sd-prog-pct">${pct(med)}%</span></div>
           <div class="sd-prog-row"><span class="sd-prog-lbl" style="color:#22c55e;">Low</span><div class="sd-prog-bar"><div class="sd-prog-fill" style="width:${pct(low)}%;background:#22c55e;"></div></div><span class="sd-prog-pct">${pct(low)}%</span></div>
+          <div class="sd-prog-row"><span class="sd-prog-lbl" style="color:#2563eb;">Info</span><div class="sd-prog-bar"><div class="sd-prog-fill" style="width:${pct(Math.max(0,info))}%;background:#2563eb;"></div></div><span class="sd-prog-pct">${pct(Math.max(0,info))}%</span></div>
         </div>
         <div class="sd-rates">
           <div class="sd-rate-item">
@@ -303,6 +307,7 @@ async function loadTarget(){
     document.getElementById('vc-high').textContent  = vc.high     || 0;
     document.getElementById('vc-med').textContent   = vc.medium   || 0;
     document.getElementById('vc-low').textContent   = vc.low      || 0;
+    document.getElementById('vc-info').textContent  = vc.info     || 0;
     document.getElementById('vc-total').textContent = t.total_vulns || 0;
 
     // Scan history — clickable rows
