@@ -2,7 +2,7 @@
 {% block title %}Targets - VAPT Scanner Pro{% endblock %}
 {% block extra_css %}<link rel="stylesheet" href="{{ url_for('static', filename='css/targets.css') }}">{% endblock %}
 {% block body %}
-<div id="_main" style="padding-top:56px;margin-left:220px;min-height:100vh;">
+<div id="_main" style="padding-top:56px;min-height:100vh;">
 <div class="content">
   <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.625rem;">
     <div>
@@ -28,12 +28,12 @@
       <table class="dt" id="targetTable">
         <thead>
           <tr>
-            <th>Target</th><th>Type</th><th>Last Scan</th><th>Status</th><th>Vulnerabilities</th><th>Actions</th>
+            <th>Target</th><th>Type</th><th>Last Scan</th><th>Scans</th><th>Status</th><th>Vulnerabilities</th><th>Actions</th>
           </tr>
         </thead>
         <tbody id="tBody">
           <tr id="emptyRow">
-            <td colspan="6" style="text-align:center;padding:2.5rem;color:var(--text-muted);">
+            <td colspan="7" style="text-align:center;padding:2.5rem;color:var(--text-muted);">
               <i class="fa-solid fa-crosshairs" style="font-size:2rem;margin-bottom:.5rem;display:block;color:var(--border)"></i>
               No targets yet. <a href="/targets/create" style="color:var(--blue)">Add a target</a> or <a href="/scanning" style="color:var(--blue)">run a scan</a> — targets are auto-created when you scan.
             </td>
@@ -78,7 +78,7 @@ function typeIcon(t) {
 function renderTargets(targets) {
     const tbody = document.getElementById('tBody');
     if (!targets || targets.length === 0) {
-        tbody.innerHTML = `<tr id="emptyRow"><td colspan="6" style="text-align:center;padding:2.5rem;color:var(--text-muted);">
+        tbody.innerHTML = `<tr id="emptyRow"><td colspan="7" style="text-align:center;padding:2.5rem;color:var(--text-muted);">
             <i class="fa-solid fa-crosshairs" style="font-size:2rem;margin-bottom:.5rem;display:block;color:var(--border)"></i>
             No targets match your search. <a href="/scanning" style="color:var(--blue)">Run a scan</a> to auto-add targets.
         </td></tr>`;
@@ -97,18 +97,24 @@ function renderTargets(targets) {
             vc.medium   ? `<span class="bx bm">${vc.medium}M</span>`   : '',
             vc.low      ? `<span class="bx bl">${vc.low}L</span>`      : '',
         ].filter(Boolean).join(' ') || '<span style="font-size:.72rem;color:var(--text-muted)">None yet</span>';
+        const scanCount = t.scan_count || 0;
+        const scanCountHtml = scanCount > 0
+            ? `<span style="display:inline-flex;align-items:center;gap:.25rem;font-size:.78rem;font-weight:700;color:var(--blue);">
+                <i class="fa-solid fa-rotate" style="font-size:.7rem;"></i>${scanCount}</span>`
+            : `<span style="font-size:.72rem;color:var(--text-muted);">—</span>`;
         return `<tr data-name="${(t.name||'').toLowerCase()}" data-url="${(t.url||'').toLowerCase()}">
             <td>
                 <strong>${t.name}</strong><br>
                 <small style="color:var(--blue)">${t.url}</small>
             </td>
             <td><span class="bx ${tCls}"><i class="fa-solid ${tIco}"></i> ${t.type}</span></td>
-            <td>${t.last_scan || 'Never'}</td>
+            <td style="font-size:.78rem;color:var(--text);">${t.last_scan || 'Never'}</td>
+            <td>${scanCountHtml}</td>
             <td><span class="bx ${stCls}"><i class="fa-solid ${stIco}"></i> ${stLbl}</span></td>
             <td>${badgesHtml}</td>
             <td>
                 <a href="/targets/${t.id}/view"  class="btn btn-o btn-s" title="View"><i class="fa-regular fa-eye"></i></a>
-                <a href="/scanning"               class="btn btn-o btn-s" title="Scan"><i class="fa-solid fa-play"></i></a>
+                <a href="/scanning?url=${encodeURIComponent(t.url)}&autostart=1" class="btn btn-p btn-s" title="Scan this target"><i class="fa-solid fa-play"></i></a>
                 <a href="/targets/${t.id}/edit"  class="btn btn-o btn-s" title="Edit"><i class="fa-regular fa-pen-to-square"></i></a>
                 <button class="btn btn-d btn-s"   onclick="deleteTarget(${t.id}, this)" title="Delete"><i class="fa-regular fa-trash-can"></i></button>
             </td>
