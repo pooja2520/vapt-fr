@@ -34,15 +34,37 @@ newScanBtn.style.display = 'none';
 
 window.addEventListener('DOMContentLoaded', () => { restoreStateOnLoad(); });
 
-// ─── On page load: ONLY reconnect if scan is actively running ─
-// Completed scan results are NOT restored on refresh — user sees a clean page.
+// ─── On page load: reconnect if scanning, or auto-fill+start from URL params ─
 async function restoreStateOnLoad() {
+    // ── 1. Check for ?url= query param (came from targets page play button) ──
+    const params   = new URLSearchParams(window.location.search);
+    const autoUrl  = params.get('url');
+    const autoStart= params.get('autostart') === '1';
+
+    if (autoUrl) {
+        // Fill in the target URL field
+        targetInput.value = decodeURIComponent(autoUrl);
+        // Clean URL bar so refreshing doesn't re-trigger
+        window.history.replaceState({}, '', '/scanning');
+
+        if (autoStart) {
+            // Small delay so the UI is fully painted before scan starts
+            setTimeout(() => {
+                showProgress('🚀 Auto-starting scan for ' + targetInput.value + '…');
+                handleScan();
+            }, 600);
+            return; // skip reconnect check below
+        }
+    }
+
+    // ── 2. Reconnect if a scan is already actively running ──────────────────
     try {
         const r    = await fetch('/api/scan-logs');
         const data = await r.json();
 
         if (data.running) {
-            // Scan still actively in progress — reconnect SSE and show live logs
+            // Scan still in progress — reconnect SSE and show live logs
+            if (autoUrl) targetInput.value = data.target || autoUrl;
             isScanning = true;
             updateScanButton(true);
             newScanBtn.style.display = 'none';
@@ -52,7 +74,7 @@ async function restoreStateOnLoad() {
             }
             connectToProgressStream();
         }
-        // If scan is idle or complete — do nothing, show clean empty page
+        // If idle or complete — clean page
     } catch (_) {}
 }
 
