@@ -218,8 +218,8 @@ function renderScanHistory(hist) {
     const high    = h.high     || 0;
     const med     = h.medium   || 0;
     const low     = h.low      || 0;
-    const info    = total - crit - high - med - low;
-    const safeN   = med + low + Math.max(0, info);
+    const info    = h.info     != null ? h.info : Math.max(0, total - crit - high - med - low);
+    const safeN   = med + low + info;
     const succPct = total > 0 ? Math.round(safeN / total * 100) : 100;
     const vulnPct = total > 0 ? Math.round((crit + high) / total * 100) : 0;
     const rt      = fmtRuntime(h.runtime_seconds);
@@ -241,19 +241,21 @@ function renderScanHistory(hist) {
         <span class="bx bh" style="min-width:2.5rem;justify-content:center;font-size:.7rem;">${high}H</span>
         <span class="bx bm" style="min-width:2.5rem;justify-content:center;font-size:.7rem;">${med}M</span>
         <span class="bx bl" style="min-width:2.5rem;justify-content:center;font-size:.7rem;">${low}L</span>
-        <span class="bx bi" style="min-width:2.5rem;justify-content:center;font-size:.7rem;">${Math.max(0,info)}I</span>
+        <span class="bx bi" style="min-width:2.5rem;justify-content:center;font-size:.7rem;">${info}I</span>
         <span style="font-size:.74rem;color:var(--text-muted);">${total} total</span>
         <i class="fa-solid fa-chevron-down scan-chevron ${wasOpen ? 'open' : ''}" id="shc-${i}"></i>
       </div>
 
       <div class="scan-detail-panel ${wasOpen ? 'open' : ''}" id="shp-${i}">
-        <div class="scan-detail-grid">
+        <div class="scan-detail-grid" style="grid-template-columns:repeat(4,1fr);">
           <div class="sd-cell"><small>Date / Time</small><strong style="font-size:.82rem;font-weight:600;">${h.scan_time || h.date || '—'}</strong></div>
           <div class="sd-cell"><small>Runtime</small><strong style="color:var(--blue);">${rt}</strong></div>
           <div class="sd-cell"><small>Total</small><strong style="color:var(--text);">${total}</strong></div>
           <div class="sd-cell"><small>Critical</small><strong style="color:#ef4444;">${crit}</strong></div>
           <div class="sd-cell"><small>High</small><strong style="color:#f97316;">${high}</strong></div>
           <div class="sd-cell"><small>Medium</small><strong style="color:#eab308;">${med}</strong></div>
+          <div class="sd-cell"><small>Low</small><strong style="color:#22c55e;">${low}</strong></div>
+          <div class="sd-cell"><small>Info</small><strong style="color:#2563eb;">${info}</strong></div>
         </div>
         <div style="background:#fff;border:1px solid var(--border);border-radius:9px;padding:.75rem 1rem;margin-bottom:.625rem;">
           <p style="font-size:.72rem;font-weight:700;color:var(--text);margin-bottom:.5rem;"><i class="fa-solid fa-bars-progress" style="color:var(--blue);margin-right:.3rem;"></i>Severity Breakdown</p>
@@ -261,7 +263,7 @@ function renderScanHistory(hist) {
           <div class="sd-prog-row"><span class="sd-prog-lbl" style="color:#f97316;">High</span><div class="sd-prog-bar"><div class="sd-prog-fill" style="width:${pct(high)}%;background:#f97316;"></div></div><span class="sd-prog-pct">${pct(high)}%</span></div>
           <div class="sd-prog-row"><span class="sd-prog-lbl" style="color:#eab308;">Medium</span><div class="sd-prog-bar"><div class="sd-prog-fill" style="width:${pct(med)}%;background:#eab308;"></div></div><span class="sd-prog-pct">${pct(med)}%</span></div>
           <div class="sd-prog-row"><span class="sd-prog-lbl" style="color:#22c55e;">Low</span><div class="sd-prog-bar"><div class="sd-prog-fill" style="width:${pct(low)}%;background:#22c55e;"></div></div><span class="sd-prog-pct">${pct(low)}%</span></div>
-          <div class="sd-prog-row"><span class="sd-prog-lbl" style="color:#2563eb;">Info</span><div class="sd-prog-bar"><div class="sd-prog-fill" style="width:${pct(Math.max(0,info))}%;background:#2563eb;"></div></div><span class="sd-prog-pct">${pct(Math.max(0,info))}%</span></div>
+          <div class="sd-prog-row"><span class="sd-prog-lbl" style="color:#2563eb;">Info</span><div class="sd-prog-bar"><div class="sd-prog-fill" style="width:${pct(info)}%;background:#2563eb;"></div></div><span class="sd-prog-pct">${pct(info)}%</span></div>
         </div>
         <div class="sd-rates">
           <div class="sd-rate-item">
