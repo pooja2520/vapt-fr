@@ -179,18 +179,30 @@ function typeIcon(t){t=(t||'').toLowerCase();return t==='api'?'fa-code':t==='ip'
 function typeClass(t){t=(t||'').toLowerCase();return t==='api'?'bap':t==='ip'?'bip':'bwb';}
 function fmtRuntime(sec){ if(!sec&&sec!==0) return '—'; if(sec<60) return sec+'s'; return Math.floor(sec/60)+'m '+(sec%60?sec%60+'s':''); }
 
+// ── Track which panels are open (persists across refreshes) ──
+const openPanels = new Set();
+
 // ── Toggle scan detail panel ─────────────────────────────────
 function toggleScanPanel(idx) {
-  const row    = document.getElementById('shr-'+idx);
-  const panel  = document.getElementById('shp-'+idx);
-  const chev   = document.getElementById('shc-'+idx);
+  const row   = document.getElementById('shr-'+idx);
+  const panel = document.getElementById('shp-'+idx);
+  const chev  = document.getElementById('shc-'+idx);
   if (!panel) return;
-  const open   = panel.classList.toggle('open');
-  row.classList.toggle('active', open);
-  chev.classList.toggle('open', open);
+  const isOpen = panel.classList.contains('open');
+  if (isOpen) {
+    panel.classList.remove('open');
+    row.classList.remove('active');
+    chev.classList.remove('open');
+    openPanels.delete(idx);
+  } else {
+    panel.classList.add('open');
+    row.classList.add('active');
+    chev.classList.add('open');
+    openPanels.add(idx);
+  }
 }
 
-// ── Render scan history ──────────────────────────────────────
+// ── Render scan history (preserves open state) ───────────────
 function renderScanHistory(hist) {
   const histEl = document.getElementById('scanHistoryBody');
   if (!hist || !hist.length) {
@@ -212,13 +224,13 @@ function renderScanHistory(hist) {
     const rt      = fmtRuntime(h.runtime_seconds);
     const sColor  = succPct >= 80 ? '#22c55e' : succPct >= 50 ? '#eab308' : '#ef4444';
     const vColor  = vulnPct <= 10 ? '#22c55e' : vulnPct <= 30 ? '#eab308' : '#ef4444';
+    const pct     = (n) => total > 0 ? Math.round(n / total * 100) : 0;
 
-    // Severity % for mini bars
-    const pct = (n) => total > 0 ? Math.round(n / total * 100) : 0;
+    // Restore open state from saved set
+    const wasOpen = openPanels.has(i);
 
     return `
-      <!-- Clickable header row -->
-      <div class="scan-hist-row" id="shr-${i}" onclick="toggleScanPanel(${i})">
+      <div class="scan-hist-row ${wasOpen ? 'active' : ''}" id="shr-${i}" onclick="toggleScanPanel(${i})">
         <span class="scan-num">#${num}</span>
         <span class="scan-time-label">
           <i class="fa-regular fa-clock" style="color:var(--text-muted);margin-right:.3rem;"></i>${h.scan_time || h.date || '—'}
@@ -228,12 +240,10 @@ function renderScanHistory(hist) {
         <span class="bx bh" style="min-width:2.5rem;justify-content:center;font-size:.7rem;">${high}H</span>
         <span class="bx bm" style="min-width:2.5rem;justify-content:center;font-size:.7rem;">${med}M</span>
         <span style="font-size:.74rem;color:var(--text-muted);">${total} total</span>
-        <i class="fa-solid fa-chevron-down scan-chevron ${i === 0 ? 'open' : ''}" id="shc-${i}"></i>
+        <i class="fa-solid fa-chevron-down scan-chevron ${wasOpen ? 'open' : ''}" id="shc-${i}"></i>
       </div>
 
-      <!-- Expandable detail panel -->
-      <div class="scan-detail-panel ${i === 0 ? 'open' : ''}" id="shp-${i}">
-        <!-- Stat cells -->
+      <div class="scan-detail-panel ${wasOpen ? 'open' : ''}" id="shp-${i}">
         <div class="scan-detail-grid">
           <div class="sd-cell"><small>Date / Time</small><strong style="font-size:.82rem;font-weight:600;">${h.scan_time || h.date || '—'}</strong></div>
           <div class="sd-cell"><small>Runtime</small><strong style="color:var(--blue);">${rt}</strong></div>
@@ -242,8 +252,6 @@ function renderScanHistory(hist) {
           <div class="sd-cell"><small>High</small><strong style="color:#f97316;">${high}</strong></div>
           <div class="sd-cell"><small>Medium</small><strong style="color:#eab308;">${med}</strong></div>
         </div>
-
-        <!-- Severity breakdown bars -->
         <div style="background:#fff;border:1px solid var(--border);border-radius:9px;padding:.75rem 1rem;margin-bottom:.625rem;">
           <p style="font-size:.72rem;font-weight:700;color:var(--text);margin-bottom:.5rem;"><i class="fa-solid fa-bars-progress" style="color:var(--blue);margin-right:.3rem;"></i>Severity Breakdown</p>
           <div class="sd-prog-row"><span class="sd-prog-lbl" style="color:#ef4444;">Critical</span><div class="sd-prog-bar"><div class="sd-prog-fill" style="width:${pct(crit)}%;background:#ef4444;"></div></div><span class="sd-prog-pct">${pct(crit)}%</span></div>
@@ -251,8 +259,6 @@ function renderScanHistory(hist) {
           <div class="sd-prog-row"><span class="sd-prog-lbl" style="color:#eab308;">Medium</span><div class="sd-prog-bar"><div class="sd-prog-fill" style="width:${pct(med)}%;background:#eab308;"></div></div><span class="sd-prog-pct">${pct(med)}%</span></div>
           <div class="sd-prog-row"><span class="sd-prog-lbl" style="color:#22c55e;">Low</span><div class="sd-prog-bar"><div class="sd-prog-fill" style="width:${pct(low)}%;background:#22c55e;"></div></div><span class="sd-prog-pct">${pct(low)}%</span></div>
         </div>
-
-        <!-- Success & Vuln rates -->
         <div class="sd-rates">
           <div class="sd-rate-item">
             <span class="sd-rate-dot" style="background:${sColor};"></span>
