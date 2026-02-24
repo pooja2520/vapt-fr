@@ -153,6 +153,12 @@ function stClass(st) {
     return 'bac';
 }
 
+function sevIcon(sev) {
+    sev = (sev||'').toLowerCase();
+    if(sev==='critical'||sev==='high'||sev==='medium') return 'fa-triangle-exclamation';
+    return 'fa-shield-halved'; // low & info
+}
+
 const SEV_ORDER = {critical:0,high:1,medium:2,low:3,info:4};
 
 // OWASP rough mapping
@@ -274,10 +280,15 @@ async function loadReport() {
                             ${(v.Finding||'').substring(0,80)}${v.Finding&&v.Finding.length>80?'…':''}
                         </div>
                     </td>
-                    <td><span class="bx ${sevClass(sev)}">${sev}</span></td>
+                    <td><span class="bx ${sevClass(sev)}"><i class="fa-solid ${sevIcon(sev)}"></i> ${sev}</span></td>
                     <td style="font-size:.72rem;color:var(--text-muted)">${owasp}</td>
-                    <td><span class="bx ${stClass(st)}">${st}</span></td>
-                    <td style="font-size:.72rem;color:var(--text-muted);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${path}">${short}</td>
+                    <td><span class="bx ${stClass(st)}"><i class="fa-solid ${st.toLowerCase()==='vulnerable'?'fa-circle-exclamation':st.toLowerCase()==='fixed'?'fa-circle-check':st.toLowerCase()==='error'?'fa-circle-xmark':'fa-circle-check'}"></i> ${st}</span></td>
+                    <td style="max-width:180px;">
+                        <span title="${path}" style="font-size:.74rem;color:var(--text-muted);display:flex;align-items:center;gap:.25rem;">
+                            <i class="fa-solid fa-link" style="font-size:.6rem;flex-shrink:0;color:var(--border);"></i>
+                            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${short}</span>
+                        </span>
+                    </td>
                 </tr>`;
             }).join('')
             : `<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted);">No vulnerability data available for this report.</td></tr>`;
