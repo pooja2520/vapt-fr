@@ -8,64 +8,265 @@
 <div id="_main" style="padding-top:56px;margin-left:220px;min-height:100vh;">
 <div class="content">
   <a href="/reports" class="back-a"><i class="fa-solid fa-arrow-left"></i> Back to Reports</a>
-  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.625rem;">
-    <div>
-      <h1 style="font-family:'Space Grotesk',sans-serif;font-size:1.375rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:.4rem;"><i class="fa-regular fa-file-lines" style="color:var(--blue)"></i> Full Security Scan - example.com</h1>
-      <p style="font-size:.78rem;color:var(--text-muted);">Generated: 2024-01-15</p>
+
+  <!-- Loading -->
+  <div id="loadingState" style="text-align:center;padding:4rem;color:var(--text-muted);">
+    <i class="fa-solid fa-spinner fa-spin" style="font-size:2rem;margin-bottom:.75rem;display:block;color:var(--blue)"></i>
+    Loading report...
+  </div>
+
+  <!-- Error -->
+  <div id="errorState" style="display:none;text-align:center;padding:4rem;color:var(--text-muted);">
+    <i class="fa-solid fa-circle-exclamation" style="font-size:2rem;margin-bottom:.75rem;display:block;color:var(--red)"></i>
+    <p>Report not found.</p>
+    <a href="/reports" class="btn btn-o" style="margin-top:1rem;display:inline-flex;">← Back to Reports</a>
+  </div>
+
+  <!-- Main content -->
+  <div id="mainContent" style="display:none;">
+    <!-- Header -->
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.625rem;">
+      <div>
+        <h1 id="rTitle" style="font-family:'Space Grotesk',sans-serif;font-size:1.375rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:.4rem;">
+          <i class="fa-regular fa-file-lines" style="color:var(--blue)"></i> —
+        </h1>
+        <p id="rGenerated" style="font-size:.78rem;color:var(--text-muted);margin-top:.25rem;"></p>
+      </div>
+      <div style="display:flex;align-items:center;gap:.5rem;">
+        <!-- Live clock -->
+        <span id="liveClock" style="font-size:.72rem;color:var(--text-muted);font-family:'Courier New',monospace;background:var(--blue-light,#eff6ff);padding:.25rem .6rem;border-radius:6px;border:1px solid var(--border);">
+          <i class="fa-regular fa-clock"></i> --:--:--
+        </span>
+        <a id="dlBtn" href="#" class="btn btn-p"><i class="fa-solid fa-download"></i> Download Report</a>
+      </div>
     </div>
-    <a href="/download" class="btn btn-p"><i class="fa-solid fa-download"></i> Download Report</a>
-  </div>
-  <div class="sum-grid">
-    <div class="sum-card"><strong style="color:var(--red)">2</strong><small>Critical</small></div>
-    <div class="sum-card"><strong style="color:var(--orange)">5</strong><small>High</small></div>
-    <div class="sum-card"><strong style="color:var(--yellow)">8</strong><small>Medium</small></div>
-    <div class="sum-card"><strong style="color:var(--blue)">12</strong><small>Low</small></div>
-  </div>
-  <div class="g2">
-    <div class="card">
-      <div class="ch"><i class="fa-solid fa-bug"></i> Severity Distribution</div>
-      <div class="cb" style="display:flex;flex-direction:column;align-items:center;">
-        <canvas id="rptChart" style="max-height:160px;max-width:160px;"></canvas>
-        <div style="display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center;margin-top:.625rem;">
-          <span style="font-size:.7rem;color:var(--text-muted);display:flex;align-items:center;gap:.25rem;"><span style="width:9px;height:9px;border-radius:50%;background:var(--red);display:inline-block"></span>Critical</span>
-          <span style="font-size:.7rem;color:var(--text-muted);display:flex;align-items:center;gap:.25rem;"><span style="width:9px;height:9px;border-radius:50%;background:var(--orange);display:inline-block"></span>High</span>
-          <span style="font-size:.7rem;color:var(--text-muted);display:flex;align-items:center;gap:.25rem;"><span style="width:9px;height:9px;border-radius:50%;background:var(--yellow);display:inline-block"></span>Medium</span>
-          <span style="font-size:.7rem;color:var(--text-muted);display:flex;align-items:center;gap:.25rem;"><span style="width:9px;height:9px;border-radius:50%;background:var(--blue);display:inline-block"></span>Low</span>
+
+    <!-- Severity summary cards -->
+    <div class="sum-grid" id="sumGrid"></div>
+
+    <!-- Chart + Scan info row -->
+    <div class="g2">
+      <div class="card">
+        <div class="ch"><i class="fa-solid fa-bug"></i> Severity Distribution</div>
+        <div class="cb" style="display:flex;flex-direction:column;align-items:center;">
+          <canvas id="rptChart" style="max-height:160px;max-width:160px;"></canvas>
+          <div style="display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center;margin-top:.625rem;">
+            <span style="font-size:.7rem;color:var(--text-muted);display:flex;align-items:center;gap:.25rem;"><span style="width:9px;height:9px;border-radius:50%;background:var(--red,#ef4444);display:inline-block"></span>Critical</span>
+            <span style="font-size:.7rem;color:var(--text-muted);display:flex;align-items:center;gap:.25rem;"><span style="width:9px;height:9px;border-radius:50%;background:var(--orange,#f97316);display:inline-block"></span>High</span>
+            <span style="font-size:.7rem;color:var(--text-muted);display:flex;align-items:center;gap:.25rem;"><span style="width:9px;height:9px;border-radius:50%;background:var(--yellow,#eab308);display:inline-block"></span>Medium</span>
+            <span style="font-size:.7rem;color:var(--text-muted);display:flex;align-items:center;gap:.25rem;"><span style="width:9px;height:9px;border-radius:50%;background:var(--blue,#2563EB);display:inline-block"></span>Low</span>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ch"><i class="fa-solid fa-circle-info"></i> Scan Info</div>
+        <div class="cb">
+          <table style="width:100%;font-size:.825rem;" id="scanInfoTable"></table>
         </div>
       </div>
     </div>
+
+    <!-- Findings table -->
     <div class="card">
-      <div class="ch"><i class="fa-solid fa-circle-info"></i> Scan Info</div>
-      <div class="cb">
-        <table style="width:100%;font-size:.825rem;">
-          <tr><td style="color:var(--text-muted);padding:.3rem 0;">Target</td><td style="font-weight:600">https://app.example.com</td></tr>
-          <tr><td style="color:var(--text-muted);padding:.3rem 0;">Scan Type</td><td style="font-weight:600">Full VAPT</td></tr>
-          <tr><td style="color:var(--text-muted);padding:.3rem 0;">Duration</td><td style="font-weight:600">45 minutes</td></tr>
-          <tr><td style="color:var(--text-muted);padding:.3rem 0;">URLs Tested</td><td style="font-weight:600">247</td></tr>
-          <tr><td style="color:var(--text-muted);padding:.3rem 0;">Status</td><td><span class="bx bac"><i class="fa-solid fa-circle-check"></i> Completed</span></td></tr>
+      <div class="ch" style="display:flex;justify-content:space-between;align-items:center;">
+        <span><i class="fa-solid fa-bug"></i> Findings</span>
+        <span id="findingCount" style="font-size:.72rem;color:var(--text-muted);"></span>
+      </div>
+      <div class="cb" style="padding:0;overflow-x:auto;">
+        <table class="dt">
+          <thead>
+            <tr>
+              <th>#</th><th>Vulnerability</th><th>Severity</th><th>OWASP</th><th>Status</th><th>Path</th>
+            </tr>
+          </thead>
+          <tbody id="findingsTbody">
+            <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted);">No findings loaded.</td></tr>
+          </tbody>
         </table>
       </div>
     </div>
-  </div>
-  <div class="card">
-    <div class="ch"><i class="fa-solid fa-bug"></i> Findings</div>
-    <div class="cb" style="padding:0;overflow-x:auto;">
-      <table class="dt">
-        <thead><tr><th>Vulnerability</th><th>Severity</th><th>OWASP</th><th>Status</th></tr></thead>
-        <tbody>
-          <tr><td><strong>SQL Injection in Login Form</strong></td><td><span class="bx bc"><i class="fa-solid fa-triangle-exclamation"></i> Critical</span></td><td style="font-size:.72rem;color:var(--text-muted)">A03:2021</td><td><span class="bx bop"><i class="fa-solid fa-circle-exclamation"></i> Open</span></td></tr>
-          <tr><td><strong>Reflected XSS in Search</strong></td><td><span class="bx bh"><i class="fa-solid fa-triangle-exclamation"></i> High</span></td><td style="font-size:.72rem;color:var(--text-muted)">A03:2021</td><td><span class="bx bop"><i class="fa-solid fa-circle-exclamation"></i> Open</span></td></tr>
-          <tr><td><strong>Missing CSP Header</strong></td><td><span class="bx bm"><i class="fa-solid fa-triangle-exclamation"></i> Medium</span></td><td style="font-size:.72rem;color:var(--text-muted)">A05:2021</td><td><span class="bx bop"><i class="fa-solid fa-circle-exclamation"></i> Open</span></td></tr>
-        </tbody>
-      </table>
-    </div>
+
+    <p id="lastRefresh" style="font-size:.68rem;color:var(--text-muted);text-align:right;margin-top:.5rem;"></p>
   </div>
 </div>
 </div>
+
+<style>
+  .sum-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1rem; }
+  .sum-card { background:#fff;border:1px solid var(--border);border-radius:10px;padding:.875rem;text-align:center; }
+  .sum-card strong { font-size:1.75rem;font-weight:700;display:block; }
+  .sum-card small  { font-size:.72rem;color:var(--text-muted); }
+  .bx { display:inline-flex;align-items:center;gap:.25rem;padding:.2rem .5rem;border-radius:6px;font-size:.72rem;font-weight:700; }
+  .bc  { background:#fee2e2;color:#991b1b; }
+  .bh  { background:#ffedd5;color:#9a3412; }
+  .bm  { background:#fef3c7;color:#92400e; }
+  .bl  { background:#dbeafe;color:#1e40af; }
+  .bac { background:#dcfce7;color:#15803d; }
+  .bop { background:#fff7ed;color:#9a3412; }
+  .bf  { background:#f0fdf4;color:#166534; }
+  @media(max-width:700px){ .sum-grid{grid-template-columns:repeat(2,1fr);} }
+</style>
 {% endblock %}
 {% block scripts %}
 <script>
 initLayout('/reports');
-new Chart(document.getElementById('rptChart'), { type:'doughnut', data:{ datasets:[{data:[2,5,8,12],backgroundColor:['#ef4444','#f97316','#eab308','#2563EB'],borderWidth:2,borderColor:'#fff'}] }, options:{ responsive:true, cutout:'65%', plugins:{legend:{display:false}} } });
+
+const reportId = parseInt(window.location.pathname.split('/').pop());
+let chartInstance = null;
+
+// Live clock
+function updateClock() {
+    const now = new Date();
+    document.getElementById('liveClock').innerHTML =
+        `<i class="fa-regular fa-clock"></i> ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+function formatDateTime(dateStr) {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr.replace(' ', 'T'));
+    if (isNaN(d)) return dateStr;
+    return d.toLocaleString('en-IN', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+    });
+}
+
+function sevClass(sev) {
+    sev = (sev||'').toLowerCase();
+    return sev==='critical'?'bc': sev==='high'?'bh': sev==='medium'?'bm': 'bl';
+}
+function stClass(st) {
+    st = (st||'').toLowerCase();
+    return st==='fixed'?'bf': st==='vulnerable'||st==='open'?'bop':'bac';
+}
+
+// OWASP rough mapping
+function owaspLabel(test) {
+    const t = (test||'').toLowerCase();
+    if (t.includes('sql') || t.includes('inject') || t.includes('xss') || t.includes('command')) return 'A03:2021';
+    if (t.includes('access') || t.includes('idor') || t.includes('authori')) return 'A01:2021';
+    if (t.includes('auth') || t.includes('session') || t.includes('csrf')) return 'A07:2021';
+    if (t.includes('header') || t.includes('csp') || t.includes('config')) return 'A05:2021';
+    if (t.includes('ssrf'))   return 'A10:2021';
+    if (t.includes('xxe'))    return 'A05:2021';
+    if (t.includes('crypto') || t.includes('tls') || t.includes('ssl')) return 'A02:2021';
+    return '—';
+}
+
+async function loadReport() {
+    try {
+        const res  = await fetch(`/api/reports/${reportId}`);
+        const data = await res.json();
+
+        if (data.status !== 'success' || !data.report) {
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('errorState').style.display   = 'block';
+            return;
+        }
+
+        const r   = data.report;
+        const vc  = r.vuln_counts || {};
+        const vulns = r.vulnerabilities || [];
+
+        // Show main content
+        document.getElementById('loadingState').style.display  = 'none';
+        document.getElementById('mainContent').style.display   = 'block';
+
+        // Title & generated time
+        document.getElementById('rTitle').innerHTML =
+            `<i class="fa-regular fa-file-lines" style="color:var(--blue)"></i> ${r.name}`;
+        document.getElementById('rGenerated').textContent =
+            `Generated: ${formatDateTime(r.scan_time || r.date)}`;
+
+        // Download button href
+        document.getElementById('dlBtn').href = `/download-report/${reportId}`;
+
+        // Summary cards
+        document.getElementById('sumGrid').innerHTML = [
+            ['Critical', vc.critical||0, 'var(--red,#ef4444)'],
+            ['High',     vc.high||0,     'var(--orange,#f97316)'],
+            ['Medium',   vc.medium||0,   'var(--yellow,#eab308)'],
+            ['Low',      vc.low||0,      'var(--blue,#2563EB)'],
+        ].map(([label, val, col]) =>
+            `<div class="sum-card">
+                <strong style="color:${col}">${val}</strong>
+                <small>${label}</small>
+            </div>`
+        ).join('');
+
+        // Chart
+        const chartData = [vc.critical||0, vc.high||0, vc.medium||0, vc.low||0];
+        if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+        if (chartData.some(v => v > 0)) {
+            chartInstance = new Chart(document.getElementById('rptChart'), {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: chartData,
+                        backgroundColor: ['#ef4444','#f97316','#eab308','#2563EB'],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: { responsive: true, cutout: '65%', plugins: { legend: { display: false } } }
+            });
+        }
+
+        // Scan info table
+        const targetHost = (r.target_url||'').replace('https://','').replace('http://','');
+        document.getElementById('scanInfoTable').innerHTML = [
+            ['Target',     r.target_url || '—'],
+            ['Scan Type',  'Full VAPT'],
+            ['Duration',   r.duration || '—'],
+            ['Total Findings', r.total || 0],
+            ['Status',     `<span class="bx bac"><i class="fa-solid fa-circle-check"></i> ${r.status}</span>`],
+            ['Scan Time',  formatDateTime(r.scan_time || r.date)],
+        ].map(([k,v]) =>
+            `<tr>
+                <td style="color:var(--text-muted);padding:.3rem 0;width:130px">${k}</td>
+                <td style="font-weight:600;font-size:.825rem">${v}</td>
+            </tr>`
+        ).join('');
+
+        // Findings table
+        document.getElementById('findingCount').textContent = `${vulns.length} finding${vulns.length!==1?'s':''}`;
+        document.getElementById('findingsTbody').innerHTML = vulns.length
+            ? vulns.map((v, i) => {
+                const sev  = v.Severity || 'Info';
+                const st   = v._display_status || v.Status || 'Open';
+                const path = v['Vulnerable Path'] || '—';
+                const owasp = owaspLabel(v.Test);
+                return `<tr>
+                    <td style="font-size:.72rem;color:var(--text-muted);width:32px">${i+1}</td>
+                    <td>
+                        <a href="/vulnerabilities/${v.id}" style="font-weight:600;color:var(--text);text-decoration:none;">
+                            ${v.Test || '—'}
+                        </a>
+                        <div style="font-size:.7rem;color:var(--text-muted);margin-top:.1rem;max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                            ${(v.Finding||'').substring(0,80)}${v.Finding&&v.Finding.length>80?'…':''}
+                        </div>
+                    </td>
+                    <td><span class="bx ${sevClass(sev)}"><i class="fa-solid fa-triangle-exclamation"></i> ${sev}</span></td>
+                    <td style="font-size:.72rem;color:var(--text-muted)">${owasp}</td>
+                    <td><span class="bx ${stClass(st)}">${st}</span></td>
+                    <td style="font-size:.72rem;color:var(--text-muted);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${path}">${path}</td>
+                </tr>`;
+            }).join('')
+            : `<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted);">No vulnerability data available for this report target.</td></tr>`;
+
+        document.getElementById('lastRefresh').textContent =
+            `Last refreshed: ${new Date().toLocaleTimeString()}`;
+
+    } catch (e) {
+        console.error('Failed to load report:', e);
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('errorState').style.display   = 'block';
+    }
+}
+
+loadReport();
+setInterval(loadReport, 15000); // refresh every 15s for live status updates
 </script>
 {% endblock %}
