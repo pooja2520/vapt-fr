@@ -181,7 +181,9 @@ async function loadReport() {
 
         const r   = data.report;
         const vc  = r.vuln_counts || {};
-        const vulns = r.vulnerabilities || [];
+        // Filter out noise-only tests from findings
+        const SKIP = ['dns resolution','ping test','port scan','service detection','vulnerability scan'];
+        const vulns = (r.vulnerabilities || []).filter(v => !SKIP.includes((v.Test||'').toLowerCase().trim()));
 
         // Show main content
         document.getElementById('loadingState').style.display  = 'none';
