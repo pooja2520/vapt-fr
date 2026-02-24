@@ -470,37 +470,43 @@ function renderGroups(vulns) {
 }
 
 function renderRows(items) {
-  let lastPath = null;
-  return items.map(v => {
-    const sev       = v.Severity||'Info';
-    const dispStatus= v._display_status || v.Status || 'Unknown';
-    const rawPath   = v['Vulnerable Path']&&v['Vulnerable Path']!=='N/A'&&v['Vulnerable Path'].trim()!==''
-                        ? v['Vulnerable Path'].trim() : null;
-    const isActionable = (v.Status||'').toLowerCase()==='vulnerable';
-    const isFixed = (dispStatus||'').toLowerCase()==='fixed';
+  let lastExplicitPath = null; // only tracks actual Vulnerable Path values, not target_url fallbacks
 
-    // Path display: show full URL, but if same as previous row show a subtle repeat indicator
+  return items.map(v => {
+    const sev        = v.Severity||'Info';
+    const dispStatus = v._display_status || v.Status || 'Unknown';
+    const isActionable = (v.Status||'').toLowerCase()==='vulnerable';
+    const isFixed    = (dispStatus||'').toLowerCase()==='fixed';
+
+    // Determine if there's a real explicit path vs just the target URL
+    const explicitPath = (v['Vulnerable Path'] && v['Vulnerable Path']!=='N/A' && v['Vulnerable Path'].trim()!=='' && v['Vulnerable Path'].trim()!=='—')
+                          ? v['Vulnerable Path'].trim() : null;
+    const displayPath  = explicitPath || v.target_url || null;
+
     let pathHtml;
-    if (!rawPath) {
+    if (!displayPath) {
       pathHtml = '<span style="color:var(--border)">—</span>';
-      lastPath = null;
-    } else if (rawPath === lastPath) {
-      // Same path as row above — show muted short version with indicator
-      const short = rawPath.replace(/https?:\/\//,'').split('/')[0];
-      pathHtml = `<span title="${rawPath}" style="font-size:.72rem;color:var(--text-muted);display:flex;align-items:center;gap:.25rem;">
+    } else if (explicitPath && explicitPath === lastExplicitPath) {
+      // Only deduplicate real Vulnerable Path values, not target_url fallbacks
+      const short = explicitPath.replace(/https?:\/\//,'').split('/')[0];
+      pathHtml = `<span title="${explicitPath}" style="font-size:.72rem;color:var(--text-muted);display:flex;align-items:center;gap:.25rem;">
         <i class="fa-solid fa-arrow-turn-down" style="font-size:.6rem;color:var(--border);"></i>
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px;">${short}</span>
       </span>`;
     } else {
-      // New path — show full URL prominently
-      const display = rawPath.replace(/https?:\/\//,'');
-      const short = display.length > 38 ? display.substring(0,38)+'…' : display;
-      pathHtml = `<span title="${rawPath}" style="font-size:.74rem;color:var(--blue);display:flex;align-items:center;gap:.25rem;cursor:help;">
+      // Show full path (explicit or target_url fallback)
+      const display = displayPath.replace(/https?:\/\//,'');
+      const short   = display.length > 38 ? display.substring(0,38)+'…' : display;
+      const color   = explicitPath ? 'var(--blue)' : 'var(--text-muted)';
+      pathHtml = `<span title="${displayPath}" style="font-size:.74rem;color:${color};display:flex;align-items:center;gap:.25rem;cursor:help;">
         <i class="fa-solid fa-link" style="font-size:.6rem;flex-shrink:0;"></i>
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:155px;">${short}</span>
       </span>`;
-      lastPath = rawPath;
     }
+
+    // Update lastExplicitPath only for real paths
+    if (explicitPath) lastExplicitPath = explicitPath;
+    else lastExplicitPath = null;
 
     const fixBtn = isActionable
       ? `<button class="btn ${isFixed?'btn-o':'btn-p'} btn-s" onclick="toggleFix(${v.id},this)" title="${isFixed?'Mark as Open':'Mark as Fixed'}">
