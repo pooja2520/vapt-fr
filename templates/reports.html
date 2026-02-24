@@ -22,24 +22,15 @@
     </div>
   </div>
 
-  <style>
-    @keyframes rpulse { 0%,100%{opacity:1} 50%{opacity:.35} }
-    .report-item { display:flex;justify-content:space-between;align-items:center;padding:.875rem 1rem;border-bottom:1px solid var(--border);gap:1rem;flex-wrap:wrap;transition:background .2s; }
-    .report-item:hover { background:var(--blue-light,#eff6ff); }
-    .report-item:last-child { border-bottom:none; }
-    .report-meta { display:flex;align-items:center;gap:.5rem;margin-top:.35rem;flex-wrap:wrap; }
-    .report-right { display:flex;align-items:center;gap:.45rem;flex-shrink:0;flex-wrap:wrap; }
-    .vuln-counts { display:flex;gap:.3rem; }
-    .badge-latest { background:linear-gradient(135deg,#2563EB,#7c3aed);color:#fff;font-size:.62rem;font-weight:700;padding:.15rem .45rem;border-radius:5px;text-transform:uppercase;letter-spacing:.05em;vertical-align:middle; }
-    .time-ago { font-size:.68rem;color:var(--text-muted);font-style:italic; }
-  </style>
+
+
 
   <div class="card">
     <div class="ch" style="display:flex;justify-content:space-between;align-items:center;">
       <span><i class="fa-regular fa-file-lines"></i> Recent Reports</span>
       <div style="display:flex;gap:1rem;align-items:center;">
-        <span id="reportCount" style="font-size:.72rem;color:var(--text-muted);"></span>
-        <span id="lastUpdated" style="font-size:.68rem;color:var(--text-muted);"></span>
+        <span id="reportCount" style="font-size:.72rem;color:rgba(255,255,255,.8);font-weight:600;"></span>
+        <span id="lastUpdated" style="font-size:.68rem;color:rgba(255,255,255,.65);"></span>
       </div>
     </div>
     <div class="cb" style="padding:0;" id="reportsList">
@@ -122,10 +113,11 @@ async function loadReports() {
         container.innerHTML = list.map((r, idx) => {
             const vc  = r.vuln_counts || {};
             const badgesHtml = [
-                vc.critical ? `<span class="bx bc">${vc.critical}C</span>` : '',
-                vc.high     ? `<span class="bx bh">${vc.high}H</span>`     : '',
-                vc.medium   ? `<span class="bx bm">${vc.medium}M</span>`   : '',
-                vc.low      ? `<span class="bx bl">${vc.low}L</span>`      : '',
+                vc.critical ? `<span class="bx bc">${vc.critical} C</span>` : '',
+                vc.high     ? `<span class="bx bh">${vc.high} H</span>`     : '',
+                vc.medium   ? `<span class="bx bm">${vc.medium} M</span>`   : '',
+                vc.low      ? `<span class="bx bl">${vc.low} L</span>`      : '',
+                vc.info     ? `<span class="bx bi">${vc.info} I</span>`     : '',
             ].filter(Boolean).join('');
 
             const statusCls  = r.status === 'Completed' ? 'bac' : 'bpg';
