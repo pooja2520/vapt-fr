@@ -168,7 +168,9 @@ initLayout('/vulnerabilities');
 /* ─────────── CONSTANTS ─────────── */
 const SKIP_TESTS = ['dns resolution','ping test','port scan','service detection','vulnerability scan'];
 
-function isInfoTest(v) {
+const SEV_ORDER = {'critical':0,'high':1,'medium':2,'low':3,'info':4};
+
+function isSkippedTest(v) {
   return SKIP_TESTS.includes((v.Test||'').toLowerCase().trim());
 }
 
@@ -200,7 +202,7 @@ async function loadVulnerabilities() {
   try {
     const res  = await fetch('/api/vulnerabilities');
     const data = await res.json();
-    allVulns = (data.vulnerabilities || []);
+    allVulns = (data.vulnerabilities || []).filter(v => !isSkippedTest(v));
     updateAnalytics();
     updateCharts();
     populateUrlFilter();
@@ -398,6 +400,15 @@ function renderGroups(vulns) {
     return new Date(b.date) - new Date(a.date) || 0;
   });
 
+  // Sort each group's items by severity order: Critical > High > Medium > Low > Info
+  groups.forEach(g => {
+    g.items.sort((a,b) => {
+      const sa = SEV_ORDER[(a.Severity||'info').toLowerCase()] ?? 4;
+      const sb = SEV_ORDER[(b.Severity||'info').toLowerCase()] ?? 4;
+      return sa - sb;
+    });
+  });
+
   const latestKey = groups[0] ? groups[0].url+'|||'+groups[0].date : '';
 
   container.innerHTML = groups.map((g, gi)=>{
@@ -468,13 +479,26 @@ function renderGroups(vulns) {
 }
 
 function renderRows(items) {
+  let lastPath = null;
   return items.map(v => {
     const sev       = v.Severity||'Info';
     const dispStatus= v._display_status || v.Status || 'Unknown';
-    const path      = v['Vulnerable Path']&&v['Vulnerable Path']!=='N/A'?v['Vulnerable Path']:'—';
-    const shortPath = path.length>35 ? path.substring(0,35)+'...' : path;
+    const rawPath   = v['Vulnerable Path']&&v['Vulnerable Path']!=='N/A'?v['Vulnerable Path']:'—';
     const isActionable = (v.Status||'').toLowerCase()==='vulnerable';
     const isFixed = (dispStatus||'').toLowerCase()==='fixed';
+
+    // Path deduplication: show path only if it differs from the previous row
+    let pathHtml;
+    if (rawPath === '—') {
+      pathHtml = '<span style="color:var(--border)">—</span>';
+      lastPath = null;
+    } else if (rawPath === lastPath) {
+      pathHtml = '<span style="color:var(--border);font-size:.7rem;" title="Same as above">↳ same</span>';
+    } else {
+      const shortPath = rawPath.length>40 ? rawPath.substring(0,40)+'…' : rawPath;
+      pathHtml = `<span title="${rawPath}" style="font-size:.74rem;color:var(--blue);word-break:break-all;">${shortPath}</span>`;
+      lastPath = rawPath;
+    }
 
     const fixBtn = isActionable
       ? `<button class="btn ${isFixed?'btn-o':'btn-p'} btn-s" onclick="toggleFix(${v.id},this)" title="${isFixed?'Mark as Open':'Mark as Fixed'}">
@@ -488,7 +512,7 @@ function renderRows(items) {
         <small style="color:var(--text-muted);font-size:.73rem">${(v.Finding||'').substring(0,80)}${(v.Finding||'').length>80?'...':''}</small>
       </td>
       <td><span class="bx ${sevClass(sev)}"><i class="fa-solid ${sevIcon(sev)}"></i> ${sev}</span></td>
-      <td style="font-size:.74rem;color:var(--text-muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${path}">${shortPath}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${pathHtml}</td>
       <td id="status-${v.id}"><span class="bx ${statClass(dispStatus)}"><i class="fa-solid ${statIcon(dispStatus)}"></i> ${dispStatus}</span></td>
       <td style="text-align:right;white-space:nowrap">
         <a href="/vulnerabilities/${v.id}" class="btn btn-o btn-s" title="View Details"><i class="fa-regular fa-eye"></i></a>
