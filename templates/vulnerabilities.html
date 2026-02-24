@@ -200,14 +200,14 @@ async function loadVulnerabilities() {
   try {
     const res  = await fetch('/api/vulnerabilities');
     const data = await res.json();
-    allVulns = (data.vulnerabilities || []).filter(v => !isInfoTest(v));
+    allVulns = (data.vulnerabilities || []);
     updateAnalytics();
     updateCharts();
     populateUrlFilter();
     filterAndRender();
     const total = allVulns.length;
     document.getElementById('vulnSubtitle').textContent =
-      `Central findings repository — ${total} finding${total!==1?'s':''} (info/recon tests excluded)`;
+      `Central findings repository — ${total} finding${total!==1?'s':''}`;
   } catch(e){ console.error(e); }
 }
 
