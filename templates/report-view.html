@@ -49,12 +49,13 @@
       <div class="card">
         <div class="ch"><i class="fa-solid fa-bug"></i> Severity Distribution</div>
         <div class="cb" style="display:flex;flex-direction:column;align-items:center;">
-          <canvas id="rptChart" style="max-height:160px;max-width:160px;"></canvas>
+          <canvas id="rptChart" style="max-height:180px;max-width:180px;"></canvas>
           <div style="display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center;margin-top:.625rem;">
-            <span style="font-size:.7rem;color:var(--text-muted);display:flex;align-items:center;gap:.25rem;"><span style="width:9px;height:9px;border-radius:50%;background:var(--red,#ef4444);display:inline-block"></span>Critical</span>
-            <span style="font-size:.7rem;color:var(--text-muted);display:flex;align-items:center;gap:.25rem;"><span style="width:9px;height:9px;border-radius:50%;background:var(--orange,#f97316);display:inline-block"></span>High</span>
-            <span style="font-size:.7rem;color:var(--text-muted);display:flex;align-items:center;gap:.25rem;"><span style="width:9px;height:9px;border-radius:50%;background:var(--yellow,#eab308);display:inline-block"></span>Medium</span>
-            <span style="font-size:.7rem;color:var(--text-muted);display:flex;align-items:center;gap:.25rem;"><span style="width:9px;height:9px;border-radius:50%;background:var(--blue,#2563EB);display:inline-block"></span>Low</span>
+            <span style="font-size:.7rem;color:var(--text-muted);display:flex;align-items:center;gap:.25rem;"><span style="width:9px;height:9px;border-radius:50%;background:#be123c;display:inline-block"></span>Critical</span>
+            <span style="font-size:.7rem;color:var(--text-muted);display:flex;align-items:center;gap:.25rem;"><span style="width:9px;height:9px;border-radius:50%;background:#f97316;display:inline-block"></span>High</span>
+            <span style="font-size:.7rem;color:var(--text-muted);display:flex;align-items:center;gap:.25rem;"><span style="width:9px;height:9px;border-radius:50%;background:#eab308;display:inline-block"></span>Medium</span>
+            <span style="font-size:.7rem;color:var(--text-muted);display:flex;align-items:center;gap:.25rem;"><span style="width:9px;height:9px;border-radius:50%;background:#16a34a;display:inline-block"></span>Low</span>
+            <span style="font-size:.7rem;color:var(--text-muted);display:flex;align-items:center;gap:.25rem;"><span style="width:9px;height:9px;border-radius:50%;background:#2563eb;display:inline-block"></span>Info</span>
           </div>
         </div>
       </div>
@@ -92,18 +93,21 @@
 </div>
 
 <style>
-  .sum-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1rem; }
+  .sum-grid { display:grid;grid-template-columns:repeat(5,1fr);gap:.75rem;margin-bottom:1rem; }
   .sum-card { background:#fff;border:1px solid var(--border);border-radius:10px;padding:.875rem;text-align:center; }
   .sum-card strong { font-size:1.75rem;font-weight:700;display:block; }
   .sum-card small  { font-size:.72rem;color:var(--text-muted); }
-  .bx { display:inline-flex;align-items:center;gap:.25rem;padding:.2rem .5rem;border-radius:6px;font-size:.72rem;font-weight:700; }
-  .bc  { background:#fee2e2;color:#991b1b; }
-  .bh  { background:#ffedd5;color:#9a3412; }
-  .bm  { background:#fef3c7;color:#92400e; }
-  .bl  { background:#dbeafe;color:#1e40af; }
-  .bac { background:#dcfce7;color:#15803d; }
-  .bop { background:#fff7ed;color:#9a3412; }
-  .bf  { background:#f0fdf4;color:#166534; }
+  /* Severity badges */
+  .bx  { display:inline-flex;align-items:center;gap:.25rem;padding:.2rem .55rem;border-radius:6px;font-size:.72rem;font-weight:700;border:1.5px solid; }
+  .bc  { background:#fff1f2;color:#be123c;border-color:#fda4af; }   /* Critical — red    */
+  .bh  { background:#fff7ed;color:#c2410c;border-color:#fdba74; }   /* High     — orange */
+  .bm  { background:#fefce8;color:#a16207;border-color:#fde047; }   /* Medium   — amber  */
+  .bl  { background:#f0fdf4;color:#15803d;border-color:#86efac; }   /* Low      — green  */
+  .bi  { background:#eff6ff;color:#1d4ed8;border-color:#93c5fd; }   /* Info     — blue   */
+  .bac { background:#f0fdf4;color:#15803d;border-color:#86efac; }   /* Completed/Secure  */
+  .bop { background:#fff1f2;color:#be123c;border-color:#fda4af; }   /* Vulnerable/Open   */
+  .bf  { background:#f0fdf4;color:#15803d;border-color:#86efac; }   /* Fixed             */
+  .bx-err { background:#fef3c7;color:#92400e;border-color:#fcd34d; } /* Error — amber    */
   @media(max-width:700px){ .sum-grid{grid-template-columns:repeat(2,1fr);} }
 </style>
 {% endblock %}
@@ -135,12 +139,21 @@ function formatDateTime(dateStr) {
 
 function sevClass(sev) {
     sev = (sev||'').toLowerCase();
-    return sev==='critical'?'bc': sev==='high'?'bh': sev==='medium'?'bm': 'bl';
+    if(sev==='critical') return 'bc';
+    if(sev==='high')     return 'bh';
+    if(sev==='medium')   return 'bm';
+    if(sev==='low')      return 'bl';
+    return 'bi'; // info — blue
 }
 function stClass(st) {
     st = (st||'').toLowerCase();
-    return st==='fixed'?'bf': st==='vulnerable'||st==='open'?'bop':'bac';
+    if(st==='fixed'||st==='secure'||st==='complete'||st==='success') return 'bac';
+    if(st==='vulnerable'||st==='open') return 'bop';
+    if(st==='error') return 'bx-err';
+    return 'bac';
 }
+
+const SEV_ORDER = {critical:0,high:1,medium:2,low:3,info:4};
 
 // OWASP rough mapping
 function owaspLabel(test) {
@@ -183,12 +196,13 @@ async function loadReport() {
         // Download button href
         document.getElementById('dlBtn').href = `/download-report/${reportId}`;
 
-        // Summary cards
+        // Summary cards — 5 severities with correct colors
         document.getElementById('sumGrid').innerHTML = [
-            ['Critical', vc.critical||0, 'var(--red,#ef4444)'],
-            ['High',     vc.high||0,     'var(--orange,#f97316)'],
-            ['Medium',   vc.medium||0,   'var(--yellow,#eab308)'],
-            ['Low',      vc.low||0,      'var(--blue,#2563EB)'],
+            ['Critical', vc.critical||0, '#be123c'],
+            ['High',     vc.high||0,     '#c2410c'],
+            ['Medium',   vc.medium||0,   '#a16207'],
+            ['Low',      vc.low||0,      '#15803d'],
+            ['Info',     vc.info||0,     '#1d4ed8'],
         ].map(([label, val, col]) =>
             `<div class="sum-card">
                 <strong style="color:${col}">${val}</strong>
@@ -196,21 +210,23 @@ async function loadReport() {
             </div>`
         ).join('');
 
-        // Chart
-        const chartData = [vc.critical||0, vc.high||0, vc.medium||0, vc.low||0];
+        // Chart — 5 severities: Critical/High/Medium/Low/Info with correct colors
+        const chartData   = [vc.critical||0, vc.high||0, vc.medium||0, vc.low||0, vc.info||0];
+        const chartColors = ['#be123c','#c2410c','#a16207','#16a34a','#2563eb'];
         if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
         if (chartData.some(v => v > 0)) {
             chartInstance = new Chart(document.getElementById('rptChart'), {
                 type: 'doughnut',
                 data: {
+                    labels: ['Critical','High','Medium','Low','Info'],
                     datasets: [{
                         data: chartData,
-                        backgroundColor: ['#ef4444','#f97316','#eab308','#2563EB'],
+                        backgroundColor: chartColors,
                         borderWidth: 2,
                         borderColor: '#fff'
                     }]
                 },
-                options: { responsive: true, cutout: '65%', plugins: { legend: { display: false } } }
+                options: { responsive:true, cutout:'65%', plugins:{ legend:{ display:false } } }
             });
         }
 
@@ -230,13 +246,21 @@ async function loadReport() {
             </tr>`
         ).join('');
 
-        // Findings table
+        // Findings table — sorted by severity: Critical → High → Medium → Low → Info
+        const sorted = [...vulns].sort((a,b) => {
+            const sa = SEV_ORDER[(a.Severity||'info').toLowerCase()] ?? 4;
+            const sb = SEV_ORDER[(b.Severity||'info').toLowerCase()] ?? 4;
+            return sa - sb;
+        });
+
         document.getElementById('findingCount').textContent = `${vulns.length} finding${vulns.length!==1?'s':''}`;
-        document.getElementById('findingsTbody').innerHTML = vulns.length
-            ? vulns.map((v, i) => {
-                const sev  = v.Severity || 'Info';
-                const st   = v._display_status || v.Status || 'Open';
-                const path = v['Vulnerable Path'] || '—';
+        document.getElementById('findingsTbody').innerHTML = sorted.length
+            ? sorted.map((v, i) => {
+                const sev   = v.Severity || 'Info';
+                const st    = v._display_status || v.Status || 'Unknown';
+                const path  = (v['Vulnerable Path'] && v['Vulnerable Path']!=='N/A' && v['Vulnerable Path']!=='—')
+                                ? v['Vulnerable Path'] : (v.target_url || '—');
+                const short = path.replace(/https?:\/\//,'');
                 const owasp = owaspLabel(v.Test);
                 return `<tr>
                     <td style="font-size:.72rem;color:var(--text-muted);width:32px">${i+1}</td>
@@ -248,13 +272,13 @@ async function loadReport() {
                             ${(v.Finding||'').substring(0,80)}${v.Finding&&v.Finding.length>80?'…':''}
                         </div>
                     </td>
-                    <td><span class="bx ${sevClass(sev)}"><i class="fa-solid fa-triangle-exclamation"></i> ${sev}</span></td>
+                    <td><span class="bx ${sevClass(sev)}">${sev}</span></td>
                     <td style="font-size:.72rem;color:var(--text-muted)">${owasp}</td>
                     <td><span class="bx ${stClass(st)}">${st}</span></td>
-                    <td style="font-size:.72rem;color:var(--text-muted);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${path}">${path}</td>
+                    <td style="font-size:.72rem;color:var(--text-muted);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${path}">${short}</td>
                 </tr>`;
             }).join('')
-            : `<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted);">No vulnerability data available for this report target.</td></tr>`;
+            : `<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted);">No vulnerability data available for this report.</td></tr>`;
 
         document.getElementById('lastRefresh').textContent =
             `Last refreshed: ${new Date().toLocaleTimeString()}`;
@@ -267,6 +291,6 @@ async function loadReport() {
 }
 
 loadReport();
-setInterval(loadReport, 15000); // refresh every 15s for live status updates
+setInterval(loadReport, 5000); // live updates every 5s
 </script>
 {% endblock %}
