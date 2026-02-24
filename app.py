@@ -451,7 +451,43 @@ def api_vulnerabilities():
 @app.route('/api/reports')
 @login_required
 def api_reports():
-    return jsonify({'reports': list(reversed(reports_store))})
+    reports = []
+    for r in reversed(reports_store):
+        entry = dict(r)
+        # Add human-readable time ago
+        entry['scan_time'] = r.get('scan_time', r.get('date', ''))
+        reports.append(entry)
+    return jsonify({'reports': reports})
+
+
+@app.route('/api/reports/<int:report_id>')
+@login_required
+def api_report_detail(report_id):
+    """Return full details for a single report, including its vulnerabilities."""
+    report = next((r for r in reports_store if r['id'] == report_id), None)
+    if not report:
+        return jsonify({'status': 'error', 'message': 'Report not found'}), 404
+
+    # Gather vulnerabilities that belong to this report's target scanned around the same time
+    target_url = report.get('target_url', '')
+    scan_time  = report.get('scan_time', report.get('date', ''))
+
+    # Collect vulns for this target; attach their global id
+    target_vulns = []
+    for i, v in enumerate(vulnerabilities_store):
+        if v.get('target_url') == target_url:
+            entry = dict(v)
+            entry['id'] = i + 1
+            entry['_display_status'] = 'Fixed' if v.get('_fixed') else v.get('Status', 'Open')
+            target_vulns.append(entry)
+
+    # Scan info extras
+    result = dict(report)
+    result['vulnerabilities'] = target_vulns
+    result['urls_tested']     = len(target_vulns)  # approximate
+    result['duration']        = f"{report.get('runtime_seconds', 0) // 60} min {report.get('runtime_seconds', 0) % 60} sec" if report.get('runtime_seconds') else 'N/A'
+
+    return jsonify({'status': 'success', 'report': result})
 
 
 @app.route('/api/scan-logs')
