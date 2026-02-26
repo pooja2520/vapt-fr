@@ -88,20 +88,39 @@ function renderTargets(targets) {
         const vc   = t.vuln_counts || {};
         const tCls = typeClass(t.type);
         const tIco = typeIcon(t.type);
-        const stCls = (t.status||'Active') === 'Active' ? 'bac' : 'bpd';
-        const stIco = (t.status||'Active') === 'Active' ? 'fa-circle-check' : 'fa-clock';
-        const stLbl = t.status || 'Active';
+
+        // Status: derive from scan state — Completed, Scanning, Pending, Active
+        const rawStatus = (t.status || '').toLowerCase();
+        const scanStatus = (t.scan_status || '').toLowerCase();
+        let stCls, stIco, stLbl;
+        if (scanStatus === 'running' || scanStatus === 'scanning') {
+            stCls = 'bsc'; stIco = 'fa-spinner fa-spin'; stLbl = 'Scanning';
+        } else if (scanStatus === 'completed' || rawStatus === 'completed') {
+            stCls = 'bcp'; stIco = 'fa-circle-check'; stLbl = 'Completed';
+        } else if (scanStatus === 'pending' || rawStatus === 'pending') {
+            stCls = 'bpd'; stIco = 'fa-clock'; stLbl = 'Pending';
+        } else if (t.last_scan && t.last_scan !== 'Never') {
+            // Has been scanned — show Completed
+            stCls = 'bcp'; stIco = 'fa-circle-check'; stLbl = 'Completed';
+        } else {
+            // Never scanned — Pending
+            stCls = 'bpd'; stIco = 'fa-clock'; stLbl = 'Pending';
+        }
+
         const badgesHtml = [
             vc.critical ? `<span class="bx bc">${vc.critical}C</span>` : '',
             vc.high     ? `<span class="bx bh">${vc.high}H</span>`     : '',
             vc.medium   ? `<span class="bx bm">${vc.medium}M</span>`   : '',
             vc.low      ? `<span class="bx bl">${vc.low}L</span>`      : '',
+            vc.info     ? `<span class="bx bi">${vc.info}I</span>`     : '',
         ].filter(Boolean).join(' ') || '<span style="font-size:.72rem;color:var(--text-muted)">None yet</span>';
+
         const scanCount = t.scan_count || 0;
         const scanCountHtml = scanCount > 0
             ? `<span style="display:inline-flex;align-items:center;gap:.25rem;font-size:.78rem;font-weight:700;color:var(--blue);">
                 <i class="fa-solid fa-rotate" style="font-size:.7rem;"></i>${scanCount}</span>`
             : `<span style="font-size:.72rem;color:var(--text-muted);">—</span>`;
+
         return `<tr data-name="${(t.name||'').toLowerCase()}" data-url="${(t.url||'').toLowerCase()}">
             <td>
                 <strong>${t.name}</strong><br>
@@ -116,7 +135,7 @@ function renderTargets(targets) {
                 <a href="/targets/${t.id}/view"  class="btn btn-o btn-s" title="View"><i class="fa-regular fa-eye"></i></a>
                 <a href="/scanning?url=${encodeURIComponent(t.url)}&autostart=1" class="btn btn-p btn-s" title="Scan this target"><i class="fa-solid fa-play"></i></a>
                 <a href="/targets/${t.id}/edit"  class="btn btn-o btn-s" title="Edit"><i class="fa-regular fa-pen-to-square"></i></a>
-                <button class="btn btn-d btn-s"   onclick="deleteTarget(${t.id}, this)" title="Delete"><i class="fa-regular fa-trash-can"></i></button>
+                <button class="btn btn-d btn-s" onclick="deleteTarget(${t.id}, this)" title="Delete"><i class="fa-regular fa-trash-can"></i></button>
             </td>
         </tr>`;
     }).join('');
@@ -144,6 +163,6 @@ async function deleteTarget(id, btn) {
 }
 
 loadTargets();
-setInterval(loadTargets, 10000);
+setInterval(loadTargets, 5000); // live updates every 5s
 </script>
 {% endblock %}
