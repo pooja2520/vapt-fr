@@ -187,6 +187,7 @@ function fmtRuntime(sec){ if(!sec&&sec!==0) return '—'; if(sec<60) return sec+
 
 // ── Track which panels are open (persists across refreshes) ──
 const openPanels = new Set();
+let lastHistHash = ''; // track if scan history data changed
 
 // ── Toggle scan detail panel ─────────────────────────────────
 function toggleScanPanel(idx) {
@@ -208,13 +209,22 @@ function toggleScanPanel(idx) {
   }
 }
 
-// ── Render scan history (preserves open state) ───────────────
+// ── Render scan history (only re-renders when data changes) ──
 function renderScanHistory(hist) {
   const histEl = document.getElementById('scanHistoryBody');
   if (!hist || !hist.length) {
     histEl.innerHTML = `<div class="no-data"><i class="fa-solid fa-clock-rotate-left" style="font-size:1.5rem;display:block;margin-bottom:.4rem;color:var(--border)"></i>No scans run yet for this target.</div>`;
+    lastHistHash = '';
     return;
   }
+
+  // Only re-render DOM if data actually changed — prevents blink on every poll
+  const newHash = JSON.stringify(hist.map(h => [h.scan_time||h.date, h.total, h.critical, h.high, h.medium, h.low, h.info, h.runtime_seconds]));
+  if (newHash === lastHistHash) {
+    // Data unchanged — just update open state classes without touching DOM structure
+    return;
+  }
+  lastHistHash = newHash;
 
   histEl.innerHTML = hist.map((h, i) => {
     const num     = hist.length - i;
@@ -305,6 +315,8 @@ function getStatusBadge(t) {
 // ── Severity order for sorting ───────────────────────────────
 const SEV_ORDER = {critical:0, high:1, medium:2, low:3, info:4};
 
+let lastVulnHash = '';
+
 // ── Main load ────────────────────────────────────────────────
 async function loadTarget(){
   try{
@@ -375,29 +387,34 @@ async function loadTarget(){
       const sb = SEV_ORDER[(b.severity||'info').toLowerCase()] ?? 4;
       return sa - sb;
     });
-    const tbody = document.getElementById('vulnBody');
-    if(!vulns.length){
-      tbody.innerHTML = `<tr><td colspan="5" class="no-data" style="padding:1.5rem;">No vulnerabilities recorded yet.</td></tr>`;
-    } else {
-      tbody.innerHTML = vulns.map(v => {
-        // Show explicit path if available, otherwise fall back to target URL
-        const hasPath = v.path && v.path !== 'N/A' && v.path !== '—' && v.path.trim() !== '';
-        const displayPath = hasPath ? v.path : (t.url || '—');
-        const shortPath = displayPath.replace(/https?:\/\//, '');
-        const pathColor = hasPath ? 'var(--blue)' : 'var(--text-muted)';
-        return `
-        <tr>
-          <td><strong>${v.test}</strong><br><small style="color:var(--text-muted);">${(v.finding||'').slice(0,90)}${v.finding&&v.finding.length>90?'…':''}</small></td>
-          <td>${sevBadge(v.severity)}</td>
-          <td>${statusBadge(v.status)}</td>
-          <td>
-            <span style="display:inline-flex;align-items:center;gap:.25rem;font-size:.74rem;color:${pathColor};max-width:200px;">
-              <i class="fa-solid fa-link" style="font-size:.6rem;flex-shrink:0;color:var(--border);"></i>
-              <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${displayPath}">${shortPath}</span>
-            </span>
-          </td>
-          <td><a href="/vulnerabilities" class="btn btn-o btn-s"><i class="fa-regular fa-eye"></i></a></td>
-        </tr>`}).join('');
+
+    // Only re-render vulns if data changed
+    const newVulnHash = JSON.stringify(vulns.map(v => [v.test, v.severity, v.status, v.path]));
+    if (newVulnHash !== lastVulnHash) {
+      lastVulnHash = newVulnHash;
+      const tbody = document.getElementById('vulnBody');
+      if(!vulns.length){
+        tbody.innerHTML = `<tr><td colspan="5" class="no-data" style="padding:1.5rem;">No vulnerabilities recorded yet.</td></tr>`;
+      } else {
+        tbody.innerHTML = vulns.map(v => {
+          const hasPath = v.path && v.path !== 'N/A' && v.path !== '—' && v.path.trim() !== '';
+          const displayPath = hasPath ? v.path : (t.url || '—');
+          const shortPath = displayPath.replace(/https?:\/\//, '');
+          const pathColor = hasPath ? 'var(--blue)' : 'var(--text-muted)';
+          return `
+          <tr>
+            <td><strong>${v.test}</strong><br><small style="color:var(--text-muted);">${(v.finding||'').slice(0,90)}${v.finding&&v.finding.length>90?'…':''}</small></td>
+            <td>${sevBadge(v.severity)}</td>
+            <td>${statusBadge(v.status)}</td>
+            <td>
+              <span style="display:inline-flex;align-items:center;gap:.25rem;font-size:.74rem;color:${pathColor};max-width:200px;">
+                <i class="fa-solid fa-link" style="font-size:.6rem;flex-shrink:0;color:var(--border);"></i>
+                <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${displayPath}">${shortPath}</span>
+              </span>
+            </td>
+            <td><a href="/vulnerabilities" class="btn btn-o btn-s"><i class="fa-regular fa-eye"></i></a></td>
+          </tr>`}).join('');
+      }
     }
   } catch(e){ console.error('loadTarget error:', e); }
 }
