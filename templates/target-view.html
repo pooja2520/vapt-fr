@@ -379,14 +379,25 @@ async function loadTarget(){
     if(!vulns.length){
       tbody.innerHTML = `<tr><td colspan="5" class="no-data" style="padding:1.5rem;">No vulnerabilities recorded yet.</td></tr>`;
     } else {
-      tbody.innerHTML = vulns.map(v => `
+      tbody.innerHTML = vulns.map(v => {
+        // Show explicit path if available, otherwise fall back to target URL
+        const hasPath = v.path && v.path !== 'N/A' && v.path !== '—' && v.path.trim() !== '';
+        const displayPath = hasPath ? v.path : (t.url || '—');
+        const shortPath = displayPath.replace(/https?:\/\//, '');
+        const pathColor = hasPath ? 'var(--blue)' : 'var(--text-muted)';
+        return `
         <tr>
           <td><strong>${v.test}</strong><br><small style="color:var(--text-muted);">${(v.finding||'').slice(0,90)}${v.finding&&v.finding.length>90?'…':''}</small></td>
           <td>${sevBadge(v.severity)}</td>
           <td>${statusBadge(v.status)}</td>
-          <td><small style="color:var(--text-muted);word-break:break-all;">${(v.path&&v.path!=='N/A')?'<i class="fa-solid fa-link" style="font-size:.6rem;margin-right:.2rem;color:var(--border);"></i>'+v.path:'—'}</small></td>
+          <td>
+            <span style="display:inline-flex;align-items:center;gap:.25rem;font-size:.74rem;color:${pathColor};max-width:200px;">
+              <i class="fa-solid fa-link" style="font-size:.6rem;flex-shrink:0;color:var(--border);"></i>
+              <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${displayPath}">${shortPath}</span>
+            </span>
+          </td>
           <td><a href="/vulnerabilities" class="btn btn-o btn-s"><i class="fa-regular fa-eye"></i></a></td>
-        </tr>`).join('');
+        </tr>`}).join('');
     }
   } catch(e){ console.error('loadTarget error:', e); }
 }
