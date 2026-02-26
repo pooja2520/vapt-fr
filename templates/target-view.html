@@ -10,7 +10,12 @@
 .bx.bi  { background:#eff6ff; color:#2563eb; border:1.5px solid #93c5fd; }
 .bx.bac { background:#f0fdf4; color:#15803d; border:1.5px solid #86efac; }
 .bx.bop { background:#fef2f2; color:#b91c1c; border:1.5px solid #fca5a5; }
-.bx.bcp { background:#eff6ff; color:#1d4ed8; border:1.5px solid #93c5fd; }
+.bx.bcp { background:#f0fdf4; color:#15803d; border:1.5px solid #86efac; }  /* Completed — green */
+.bx.bpd { background:#fefce8; color:#a16207; border:1.5px solid #fde047; }  /* Pending   — amber */
+.bx.bsc { background:#eff6ff; color:#1d4ed8; border:1.5px solid #93c5fd; }  /* Scanning  — blue  */
+.bx.bwb { background:#eff6ff; color:#1d4ed8; border:1.5px solid #93c5fd; }  /* Web type  */
+.bx.bap { background:#faf5ff; color:#7c3aed; border:1.5px solid #c4b5fd; }  /* API type  */
+.bx.bip { background:#f0fdf4; color:#15803d; border:1.5px solid #86efac; }  /* IP  type  */
 
 /* ── Scan History ── */
 .scan-hist-row {
@@ -284,6 +289,22 @@ function renderScanHistory(hist) {
   }).join('');
 }
 
+// ── Status badge — Completed / Scanning / Pending ────────────
+function getStatusBadge(t) {
+  const scanStatus = (t.scan_status || '').toLowerCase();
+  const rawStatus  = (t.status || '').toLowerCase();
+  if (scanStatus === 'running' || scanStatus === 'scanning') {
+    return `<span class="bx bsc"><i class="fa-solid fa-spinner fa-spin"></i> Scanning</span>`;
+  }
+  if (scanStatus === 'completed' || rawStatus === 'completed' || (t.last_scan && t.last_scan !== 'Never')) {
+    return `<span class="bx bcp"><i class="fa-solid fa-circle-check"></i> Completed</span>`;
+  }
+  return `<span class="bx bpd"><i class="fa-solid fa-clock"></i> Pending</span>`;
+}
+
+// ── Severity order for sorting ───────────────────────────────
+const SEV_ORDER = {critical:0, high:1, medium:2, low:3, info:4};
+
 // ── Main load ────────────────────────────────────────────────
 async function loadTarget(){
   try{
@@ -294,13 +315,46 @@ async function loadTarget(){
 
     document.getElementById('tName').textContent = t.name || '—';
     document.getElementById('tUrl').textContent  = t.url  || '—';
-    document.getElementById('tDesc').textContent = t.description || 'No description provided.';
+
+    // Target Details — rich info
+    const desc = t.description && t.description !== 'No description provided.' ? t.description : null;
+    document.getElementById('tDesc').innerHTML = `
+      <table style="width:100%;font-size:.845rem;border-collapse:collapse;">
+        <tr>
+          <td style="color:var(--text-muted);padding:.35rem 0;width:160px;vertical-align:top;">Description</td>
+          <td style="font-weight:600;padding:.35rem 0;">${desc || '<span style="color:var(--text-muted);font-weight:400;">No description provided.</span>'}</td>
+        </tr>
+        <tr>
+          <td style="color:var(--text-muted);padding:.35rem 0;">URL</td>
+          <td style="font-weight:600;padding:.35rem 0;"><a href="${t.url||'#'}" target="_blank" style="color:var(--blue);text-decoration:none;">${t.url||'—'}</a></td>
+        </tr>
+        <tr>
+          <td style="color:var(--text-muted);padding:.35rem 0;">Type</td>
+          <td style="padding:.35rem 0;">${(() => { const tc=typeClass(t.type),ti=typeIcon(t.type); return `<span class="bx ${tc}"><i class="fa-solid ${ti}"></i> ${t.type||'Web'}</span>`; })()}</td>
+        </tr>
+        <tr>
+          <td style="color:var(--text-muted);padding:.35rem 0;">Last Scan</td>
+          <td style="font-weight:600;padding:.35rem 0;">${t.last_scan||'Never'}</td>
+        </tr>
+        <tr>
+          <td style="color:var(--text-muted);padding:.35rem 0;">Total Scans</td>
+          <td style="font-weight:600;padding:.35rem 0;">${t.scan_count||0}</td>
+        </tr>
+        <tr>
+          <td style="color:var(--text-muted);padding:.35rem 0;">Total Findings</td>
+          <td style="font-weight:600;padding:.35rem 0;">${t.total_vulns||0}</td>
+        </tr>
+        <tr>
+          <td style="color:var(--text-muted);padding:.35rem 0;">Scan Status</td>
+          <td style="padding:.35rem 0;">${getStatusBadge(t)}</td>
+        </tr>
+      </table>`;
 
     const tc = typeClass(t.type), ti = typeIcon(t.type);
-    document.getElementById('mType').innerHTML   = `<span class="bx ${tc}"><i class="fa-solid ${ti}"></i> ${t.type||'Web'}</span>`;
-    const sc = (t.status==='Active') ? 'bac' : 'bpd';
-    const si = (t.status==='Active') ? 'fa-circle-check' : 'fa-clock';
-    document.getElementById('mStatus').innerHTML = `<span class="bx ${sc}"><i class="fa-solid ${si}"></i> ${t.status||'Active'}</span>`;
+    document.getElementById('mType').innerHTML = `<span class="bx ${tc}"><i class="fa-solid ${ti}"></i> ${t.type||'Web'}</span>`;
+
+    // Status — Completed if scanned, Pending if never scanned, Scanning if running
+    document.getElementById('mStatus').innerHTML = getStatusBadge(t);
     document.getElementById('mLastScan').textContent  = t.last_scan  || 'Never';
     document.getElementById('mScanCount').textContent = t.scan_count || 0;
 
@@ -315,8 +369,12 @@ async function loadTarget(){
     // Scan history — clickable rows
     renderScanHistory(t.scan_history || []);
 
-    // Recent vulns
-    const vulns = t.recent_vulns || [];
+    // Recent vulns — sorted by severity: Critical → High → Medium → Low → Info
+    const vulns = (t.recent_vulns || []).sort((a, b) => {
+      const sa = SEV_ORDER[(a.severity||'info').toLowerCase()] ?? 4;
+      const sb = SEV_ORDER[(b.severity||'info').toLowerCase()] ?? 4;
+      return sa - sb;
+    });
     const tbody = document.getElementById('vulnBody');
     if(!vulns.length){
       tbody.innerHTML = `<tr><td colspan="5" class="no-data" style="padding:1.5rem;">No vulnerabilities recorded yet.</td></tr>`;
@@ -326,7 +384,7 @@ async function loadTarget(){
           <td><strong>${v.test}</strong><br><small style="color:var(--text-muted);">${(v.finding||'').slice(0,90)}${v.finding&&v.finding.length>90?'…':''}</small></td>
           <td>${sevBadge(v.severity)}</td>
           <td>${statusBadge(v.status)}</td>
-          <td><small style="color:var(--text-muted);word-break:break-all;">${(v.path&&v.path!=='N/A')?v.path:'—'}</small></td>
+          <td><small style="color:var(--text-muted);word-break:break-all;">${(v.path&&v.path!=='N/A')?'<i class="fa-solid fa-link" style="font-size:.6rem;margin-right:.2rem;color:var(--border);"></i>'+v.path:'—'}</small></td>
           <td><a href="/vulnerabilities" class="btn btn-o btn-s"><i class="fa-regular fa-eye"></i></a></td>
         </tr>`).join('');
     }
@@ -334,6 +392,6 @@ async function loadTarget(){
 }
 
 loadTarget();
-setInterval(loadTarget, 8000);
+setInterval(loadTarget, 5000); // live updates every 5s
 </script>
 {% endblock %}
