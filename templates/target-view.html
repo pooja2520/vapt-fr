@@ -91,7 +91,7 @@
 </style>
 {% endblock %}
 {% block body %}
-<div id="_main" style="padding-top:56px;min-height:100vh;">
+<div id="_main" style="padding-top:56px;min-height:100vh;margin-left:220px;transition:margin-left 0.25s ease;">
 <div class="content">
   <a href="/targets" class="back-a"><i class="fa-solid fa-arrow-left"></i> Back to Targets</a>
   <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.625rem;">
@@ -328,37 +328,67 @@ async function loadTarget(){
     document.getElementById('tName').textContent = t.name || '—';
     document.getElementById('tUrl').textContent  = t.url  || '—';
 
-    // Target Details — rich info
-    const desc = t.description && t.description !== 'No description provided.' ? t.description : null;
+    // Target Details — auto-generated description + latest indicators
+    const vc   = t.vuln_counts || {};
+    const desc = t.description && t.description.trim() !== '' && t.description !== 'No description provided.' ? t.description : null;
+    const isLatestScan = t.last_scan && t.last_scan !== 'Never';
+    const host = (t.url||'').replace(/https?:\/\//,'').split('/')[0];
+    const typeStr  = (t.type||'Web').toLowerCase();
+    const scans    = t.scan_count || 0;
+    const total    = t.total_vulns || 0;
+    const critical = vc.critical || 0;
+    const high     = vc.high || 0;
+    const riskStr  = critical > 0 ? '<span style="color:#be123c;font-weight:700;">critical risk</span>'
+                   : high     > 0 ? '<span style="color:#c2410c;font-weight:700;">elevated risk</span>'
+                   : '<span style="color:#15803d;font-weight:700;">low risk</span>';
+
+    const autoDesc = desc
+      ? `<span style="color:var(--text);">${desc}</span>`
+      : scans === 0
+        ? `<span style="color:var(--text);"><strong>${host}</strong> is a <strong>${typeStr}</strong> target registered for security scanning. No scans have been run yet. <a href="/scanning" style="color:var(--blue);">Start a scan</a> to begin assessing vulnerabilities.</span>`
+        : `<span style="color:var(--text);"><strong>${host}</strong> is a <strong>${typeStr}</strong> target scanned <strong>${scans} time${scans!==1?'s':''}</strong>. The latest scan on <strong>${t.last_scan}</strong> identified <strong>${total} total findings</strong> with ${riskStr} profile — <span style="color:#be123c;font-weight:600;">${critical} critical</span>, <span style="color:#c2410c;font-weight:600;">${high} high</span>, <span style="color:#a16207;font-weight:600;">${vc.medium||0} medium</span>, <span style="color:#15803d;font-weight:600;">${vc.low||0} low</span>, and <span style="color:#1d4ed8;font-weight:600;">${vc.info||0} informational</span>.</span>`;
+
     document.getElementById('tDesc').innerHTML = `
       <table style="width:100%;font-size:.845rem;border-collapse:collapse;">
         <tr>
-          <td style="color:var(--text-muted);padding:.35rem 0;width:160px;vertical-align:top;">Description</td>
-          <td style="font-weight:600;padding:.35rem 0;">${desc || '<span style="color:var(--text-muted);font-weight:400;">No description provided.</span>'}</td>
+          <td style="color:var(--text-muted);padding:.4rem 0;width:150px;vertical-align:top;font-weight:500;">Description</td>
+          <td style="padding:.4rem 0;line-height:1.7;">${autoDesc}</td>
         </tr>
-        <tr>
-          <td style="color:var(--text-muted);padding:.35rem 0;">URL</td>
-          <td style="font-weight:600;padding:.35rem 0;"><a href="${t.url||'#'}" target="_blank" style="color:var(--blue);text-decoration:none;">${t.url||'—'}</a></td>
+        <tr style="border-top:1px solid var(--border);">
+          <td style="color:var(--text-muted);padding:.4rem 0;font-weight:500;">URL</td>
+          <td style="padding:.4rem 0;"><a href="${t.url||'#'}" target="_blank" style="color:var(--blue);text-decoration:none;font-weight:600;">${t.url||'—'}</a></td>
         </tr>
-        <tr>
-          <td style="color:var(--text-muted);padding:.35rem 0;">Type</td>
-          <td style="padding:.35rem 0;">${(() => { const tc=typeClass(t.type),ti=typeIcon(t.type); return `<span class="bx ${tc}"><i class="fa-solid ${ti}"></i> ${t.type||'Web'}</span>`; })()}</td>
+        <tr style="border-top:1px solid var(--border);">
+          <td style="color:var(--text-muted);padding:.4rem 0;font-weight:500;">Type</td>
+          <td style="padding:.4rem 0;">${(() => { const tc=typeClass(t.type),ti=typeIcon(t.type); return `<span class="bx ${tc}"><i class="fa-solid ${ti}"></i> ${t.type||'Web'}</span>`; })()}</td>
         </tr>
-        <tr>
-          <td style="color:var(--text-muted);padding:.35rem 0;">Last Scan</td>
-          <td style="font-weight:600;padding:.35rem 0;">${t.last_scan||'Never'}</td>
+        <tr style="border-top:1px solid var(--border);">
+          <td style="color:var(--text-muted);padding:.4rem 0;font-weight:500;">Last Scan</td>
+          <td style="padding:.4rem 0;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+            <span style="font-weight:600;">${t.last_scan||'Never'}</span>
+            ${isLatestScan ? `<span style="display:inline-flex;align-items:center;gap:.2rem;padding:.12rem .45rem;background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;border-radius:5px;font-size:.65rem;font-weight:700;"><i class="fa-solid fa-star" style="font-size:.55rem;"></i> Latest</span>` : ''}
+          </td>
         </tr>
-        <tr>
-          <td style="color:var(--text-muted);padding:.35rem 0;">Total Scans</td>
-          <td style="font-weight:600;padding:.35rem 0;">${t.scan_count||0}</td>
+        <tr style="border-top:1px solid var(--border);">
+          <td style="color:var(--text-muted);padding:.4rem 0;font-weight:500;">Total Scans</td>
+          <td style="font-weight:600;padding:.4rem 0;">${scans}</td>
         </tr>
-        <tr>
-          <td style="color:var(--text-muted);padding:.35rem 0;">Total Findings</td>
-          <td style="font-weight:600;padding:.35rem 0;">${t.total_vulns||0}</td>
+        <tr style="border-top:1px solid var(--border);">
+          <td style="color:var(--text-muted);padding:.4rem 0;font-weight:500;">Total Findings</td>
+          <td style="padding:.4rem 0;">
+            <span style="font-weight:700;font-size:.95rem;">${total}</span>
+            <span style="margin-left:.5rem;font-size:.72rem;">
+              ${critical ? `<span style="color:#be123c;font-weight:700;margin-right:.3rem;">${critical}C</span>` : ''}
+              ${high     ? `<span style="color:#c2410c;font-weight:700;margin-right:.3rem;">${high}H</span>` : ''}
+              ${vc.medium ? `<span style="color:#a16207;font-weight:700;margin-right:.3rem;">${vc.medium}M</span>` : ''}
+              ${vc.low    ? `<span style="color:#15803d;font-weight:700;margin-right:.3rem;">${vc.low}L</span>` : ''}
+              ${vc.info   ? `<span style="color:#1d4ed8;font-weight:700;">${vc.info}I</span>` : ''}
+            </span>
+          </td>
         </tr>
-        <tr>
-          <td style="color:var(--text-muted);padding:.35rem 0;">Scan Status</td>
-          <td style="padding:.35rem 0;">${getStatusBadge(t)}</td>
+        <tr style="border-top:1px solid var(--border);">
+          <td style="color:var(--text-muted);padding:.4rem 0;font-weight:500;">Scan Status</td>
+          <td style="padding:.4rem 0;">${getStatusBadge(t)}</td>
         </tr>
       </table>`;
 
@@ -370,7 +400,6 @@ async function loadTarget(){
     document.getElementById('mLastScan').textContent  = t.last_scan  || 'Never';
     document.getElementById('mScanCount').textContent = t.scan_count || 0;
 
-    const vc = t.vuln_counts || {};
     document.getElementById('vc-crit').textContent  = vc.critical || 0;
     document.getElementById('vc-high').textContent  = vc.high     || 0;
     document.getElementById('vc-med').textContent   = vc.medium   || 0;
