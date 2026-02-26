@@ -526,19 +526,15 @@ function renderRows(items) {
     } else if (explicitPath && explicitPath === lastExplicitPath) {
       // Only deduplicate real Vulnerable Path values, not target_url fallbacks
       const short = explicitPath.replace(/https?:\/\//,'').split('/')[0];
-      pathHtml = `<span title="${explicitPath}" style="font-size:.72rem;color:var(--text-muted);display:flex;align-items:center;gap:.25rem;">
-        <i class="fa-solid fa-arrow-turn-down" style="font-size:.6rem;color:var(--border);"></i>
-        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px;">${short}</span>
+      pathHtml = `<span title="${explicitPath}" style="font-size:.72rem;color:var(--text-muted);">
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px;display:block;">${short}</span>
       </span>`;
     } else {
       // Show full path (explicit or target_url fallback)
       const display = displayPath.replace(/https?:\/\//,'');
       const short   = display.length > 38 ? display.substring(0,38)+'…' : display;
       const color   = explicitPath ? 'var(--blue)' : 'var(--text-muted)';
-      pathHtml = `<span title="${displayPath}" style="font-size:.74rem;color:${color};display:flex;align-items:center;gap:.25rem;cursor:help;">
-        <i class="fa-solid fa-link" style="font-size:.6rem;flex-shrink:0;"></i>
-        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:155px;">${short}</span>
-      </span>`;
+      pathHtml = `<span title="${displayPath}" style="font-size:.74rem;color:${color};display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:155px;cursor:help;">${short}</span>`;
     }
 
     // Update lastExplicitPath only for real paths
