@@ -60,26 +60,25 @@
         if (mEl) {
             mEl.classList.add('main');
             mEl.id = 'main';
-            // Set initial margin explicitly so collapse toggle can override it
-            mEl.style.marginLeft = '220px';
-            mEl.style.transition = 'margin-left 0.25s ease';
+            // Remove any inline margin — layout is controlled by --ml CSS variable
+            mEl.style.removeProperty('margin-left');
+            mEl.style.removeProperty('transition');
         }
+        // Set initial CSS variable value
+        document.documentElement.style.setProperty('--ml', '220px');
     };
 
     window.toggleSB = function () {
-        const s = document.getElementById('sb');
-        const h = document.getElementById('hdr');
-        const m = document.getElementById('main');
-        const i = document.getElementById('cbI');
+        const s  = document.getElementById('sb');
+        const i  = document.getElementById('cbI');
+        const collapsed = !s.classList.contains('col');
         s.classList.toggle('col');
-        h.classList.toggle('col');
-        if (m) {
-            m.classList.toggle('col');
-            // Directly set margin so it works even with inline styles on the element
-            const collapsed = s.classList.contains('col');
-            m.style.marginLeft = collapsed ? '60px' : '220px';
-        }
-        i.className = s.classList.contains('col') ? 'fa-solid fa-chevron-right' : 'fa-solid fa-chevron-left';
+        i.className = collapsed ? 'fa-solid fa-chevron-right' : 'fa-solid fa-chevron-left';
+        // Update CSS variable — this moves BOTH header and main simultaneously
+        const ml = collapsed ? '56px' : '220px';
+        document.documentElement.style.setProperty('--ml', ml);
+        // Dispatch resize so Chart.js and other responsive elements reflow
+        setTimeout(() => window.dispatchEvent(new Event('resize')), 260);
     };
 
     window.toggleDrop = function (id) {
