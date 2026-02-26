@@ -25,10 +25,13 @@
 .acard.ac-fix .av{color:#22c55e;}
 
 /* ── Charts Row ────────────────────────────────── */
-.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1rem;}
-.chart-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:1rem;}
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1rem;min-width:0;}
+.chart-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:1rem;min-width:0;overflow:hidden;}
 .chart-card .ch{font-size:.8rem;font-weight:700;color:var(--text);margin-bottom:.75rem;display:flex;align-items:center;gap:.5rem;}
-.chart-wrap{position:relative;height:200px;}
+.chart-wrap{position:relative;height:220px;width:100%;min-width:0;overflow:hidden;}
+@media(max-width:1100px){.chart-wrap{height:200px;}}
+@media(max-width:900px){.charts-row{grid-template-columns:1fr;}.chart-wrap{height:220px;}}
+@media(max-width:600px){.chart-wrap{height:190px;}}
 
 /* ── Scan Groups ───────────────────────────────── */
 .scan-group{margin-bottom:1rem;}
@@ -82,7 +85,7 @@
 </style>
 {% endblock %}
 {% block body %}
-<div id="_main" style="padding-top:56px;margin-left:220px;min-height:100vh;">
+<div id="_main">
 <div class="content">
 
   <!-- Header -->
@@ -280,9 +283,10 @@ function updateCharts() {
       type:'doughnut',
       data: pieData,
       options:{
-        responsive:true,maintainAspectRatio:false,
+        responsive: true,
+        maintainAspectRatio: false,
         plugins:{
-          legend:{position:'right',labels:{font:{size:11},boxWidth:10,padding:12,
+          legend:{position:'right',labels:{font:{size:10},boxWidth:9,padding:10,
             color:'#374151',
             generateLabels:(chart)=>{
               const d=chart.data;
@@ -315,7 +319,9 @@ function updateCharts() {
 
   const labels = Object.keys(groups).map(k=>{
     const parts = k.split(' @ ');
-    return parts[0].substring(0,20)+(parts[0].length>20?'…':'') + '\n' + (parts[1]||'');
+    const host  = parts[0].split('.').slice(0,2).join('.').substring(0,12);
+    const dt    = (parts[1]||'').replace(/^\d{4}-/,'');   // "MM-DD HH:MM"
+    return [host, dt];
   });
 
   const barData = {
@@ -336,9 +342,27 @@ function updateCharts() {
       type:'bar',
       data: barData,
       options:{
-        responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10}}},
-        scales:{x:{stacked:true,ticks:{font:{size:9}}},y:{stacked:true,ticks:{stepSize:1}}}
+        responsive: true,
+        maintainAspectRatio: false,
+        layout:{ padding:{ bottom:4 } },
+        plugins:{
+          legend:{
+            position:'top',
+            labels:{ font:{size:10}, boxWidth:10, padding:8 }
+          }
+        },
+        scales:{
+          x:{
+            stacked:true,
+            grid:{ display:false },
+            ticks:{ font:{size:9}, maxRotation:30, minRotation:20, autoSkip:false }
+          },
+          y:{
+            stacked:true,
+            ticks:{ font:{size:10} },
+            grid:{ color:'#f1f5f9' }
+          }
+        }
       }
     });
   }
@@ -631,5 +655,10 @@ async function loadVulnerabilities() {
 loadVulnerabilities();
 // Poll every 5s — fast live updates in sync with active scans
 setInterval(loadVulnerabilities, 5000);
+
+window.addEventListener('resize', () => {
+  if (pieChart) pieChart.resize();
+  if (barChart) barChart.resize();
+});
 </script>
 {% endblock %}
