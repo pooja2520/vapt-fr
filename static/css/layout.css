@@ -15,8 +15,10 @@
     --green: #22c55e;
     --orange: #f97316;
     --yellow: #eab308;
-    --sw: 220px;
+    --sw: 220px;       /* sidebar expanded width  */
+    --sw-col: 56px;    /* sidebar collapsed width */
     --hh: 56px;
+    --ml: 220px;       /* main margin — toggled by JS */
 }
 
 body {
@@ -98,7 +100,7 @@ a.ni i { font-size: .9rem; width: 18px; text-align: center; flex-shrink: 0; }
 /* Header */
 .hdr {
     position: fixed;
-    left: var(--sw);
+    left: var(--ml);
     right: 0;
     top: 0;
     height: var(--hh);
@@ -112,7 +114,7 @@ a.ni i { font-size: .9rem; width: 18px; text-align: center; flex-shrink: 0; }
     transition: left .25s;
     gap: 1rem;
 }
-.hdr.col { left: 56px; }
+/* hdr left is controlled by --ml CSS var via layout.js */
 .srch {
     display: flex;
     align-items: center;
@@ -187,9 +189,17 @@ a.ni i { font-size: .9rem; width: 18px; text-align: center; flex-shrink: 0; }
 .ui strong { display: block; font-size: .775rem; font-weight: 600; color: var(--text); }
 .ui small { display: block; font-size: .675rem; color: var(--text-muted); }
 
-/* Main layout */
-.main { margin-left: var(--sw); padding-top: var(--hh); flex: 1; min-height: 100vh; transition: margin-left .25s; }
-.main.col { margin-left: 56px; }
+/* Main layout — margin controlled by --ml CSS var, toggled by layout.js */
+.main {
+    margin-left: var(--ml);
+    padding-top: var(--hh);
+    flex: 1;
+    min-height: 100vh;
+    transition: margin-left .25s ease;
+    width: calc(100% - var(--ml));
+    max-width: 100%;
+    overflow-x: hidden;
+}
 .content { padding: 1.25rem; }
 .pt { margin-bottom: 1.25rem; }
 .pt h1 { font-family: 'Space Grotesk', sans-serif; font-size: 1.375rem; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: .5rem; }
