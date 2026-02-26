@@ -5,7 +5,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/scanner.css') }}">
 {% endblock %}
 {% block body %}
-<div id="_main" style="padding-top:56px;min-height:100vh;">
+<div id="_main">
 <div class="content">
   <div class="pt">
     <h1><i class="fa-solid fa-magnifying-glass"></i> Security Scan</h1>
@@ -85,7 +85,7 @@
         <div class="card" style="margin-top:.875rem;margin-bottom:0;">
           <div class="ch" style="padding:.5rem .875rem;font-size:.8rem;display:flex;justify-content:space-between;align-items:center;">
             <span><i class="fa-regular fa-file-lines"></i> Scan Logs</span>
-            <span id="logStatus" style="font-size:.7rem;color:#fff;">Idle</span>
+            <span id="logStatus" style="font-size:.7rem;color:var(--text-muted);">Idle</span>
           </div>
           <div class="scan-log" id="scanLog"
                style="height:280px;overflow-y:auto;background:#0f172a;padding:.75rem;font-family:'Courier New',monospace;font-size:.72rem;line-height:1.6;border-radius:0 0 10px 10px;">
@@ -159,7 +159,347 @@
 <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 <script>
 initLayout('/scanning');
-// Bind testAuthBtn after layout is ready
 document.getElementById('testAuthBtn').addEventListener('click', handleTestAuth);
+
+const SCAN_KEY     = 'vapt_active_scan';
+const SCAN_LOG_KEY = 'vapt_scan_logs';
+const SCAN_PHASE_KEY = 'vapt_scan_phase';
+
+function persistScanConfig(target, loginType, authData) {
+    const state = {
+        target,
+        loginType,
+        authData,
+        startedAt: Date.now(),
+        status: 'running',
+        phase: 1,
+        phaseName: 'Network Security Testing',
+        progress: 0,
+    };
+    localStorage.setItem(SCAN_KEY, JSON.stringify(state));
+    localStorage.setItem(SCAN_LOG_KEY, JSON.stringify([]));
+}
+
+function persistPhase(phase, name, progress) {
+    try {
+        const state = JSON.parse(localStorage.getItem(SCAN_KEY) || '{}');
+        state.phase    = phase;
+        state.phaseName = name;
+        state.progress  = progress;
+        localStorage.setItem(SCAN_KEY, JSON.stringify(state));
+    } catch(e) {}
+}
+
+function persistLogs(lines) {
+    try {
+        const logs = JSON.parse(localStorage.getItem(SCAN_LOG_KEY) || '[]');
+        lines.forEach(l => { if (!logs.includes(l)) logs.push(l); });
+        const trimmed = logs.slice(-500);
+        localStorage.setItem(SCAN_LOG_KEY, JSON.stringify(trimmed));
+    } catch(e) {}
+}
+
+function persistScanComplete(status) {
+    try {
+        const state = JSON.parse(localStorage.getItem(SCAN_KEY) || '{}');
+        state.status    = status;
+        state.progress  = status === 'completed' ? 100 : state.progress;
+        state.finishedAt = Date.now();
+        localStorage.setItem(SCAN_KEY, JSON.stringify(state));
+    } catch(e) {}
+}
+
+function clearScanState() {
+    localStorage.removeItem(SCAN_KEY);
+    localStorage.removeItem(SCAN_LOG_KEY);
+    localStorage.removeItem(SCAN_PHASE_KEY);
+}
+
+function readFormConfig() {
+    const loginType = document.getElementById('loginType').value;
+    const authData  = {};
+    if (loginType === 'basic') {
+        authData.basicUsername = document.getElementById('basicUsername').value;
+        authData.basicPassword = document.getElementById('basicPassword').value;
+    } else if (loginType === 'form') {
+        authData.formLoginUrl         = document.getElementById('formLoginUrl').value;
+        authData.formUsername         = document.getElementById('formUsername').value;
+        authData.formPassword         = document.getElementById('formPassword').value;
+        authData.formUsernameField    = document.getElementById('formUsernameField').value;
+        authData.formPasswordField    = document.getElementById('formPasswordField').value;
+        authData.formSuccessIndicator = document.getElementById('formSuccessIndicator').value;
+    }
+    return { loginType, authData };
+}
+
+function restoreFormConfig(state) {
+    if (!state) return;
+    if (state.target) document.getElementById('targetInput').value = state.target;
+    const lt = state.loginType || 'none';
+    document.getElementById('loginType').value = lt;
+    document.getElementById('basicAuthFields').style.display = 'none';
+    document.getElementById('formAuthFields').style.display  = 'none';
+    if (lt === 'basic') {
+        document.getElementById('basicAuthFields').style.display = 'block';
+        if (state.testAuthBtn) document.getElementById('testAuthBtn').style.display = 'inline-flex';
+    } else if (lt === 'form') {
+        document.getElementById('formAuthFields').style.display = 'block';
+        if (state.testAuthBtn) document.getElementById('testAuthBtn').style.display = 'inline-flex';
+    }
+    const d = state.authData || {};
+    if (d.basicUsername)         document.getElementById('basicUsername').value         = d.basicUsername;
+    if (d.basicPassword)         document.getElementById('basicPassword').value         = d.basicPassword;
+    if (d.formLoginUrl)          document.getElementById('formLoginUrl').value          = d.formLoginUrl;
+    if (d.formUsername)          document.getElementById('formUsername').value          = d.formUsername;
+    if (d.formPassword)          document.getElementById('formPassword').value          = d.formPassword;
+    if (d.formUsernameField)     document.getElementById('formUsernameField').value     = d.formUsernameField;
+    if (d.formPasswordField)     document.getElementById('formPasswordField').value     = d.formPasswordField;
+    if (d.formSuccessIndicator)  document.getElementById('formSuccessIndicator').value  = d.formSuccessIndicator;
+}
+
+function restoreProgressUI(state) {
+    if (!state) return;
+    const pct = state.progress || 0;
+    document.getElementById('progFill').style.width = pct + '%';
+    document.getElementById('pctLabel').textContent  = pct + '%';
+    const phaseMap = {
+        1: { label: 'Network Security Testing',        id: 'ph1' },
+        2: { label: 'Web Crawling & Path Discovery',   id: 'ph2' },
+        3: { label: 'OWASP Top 10 Testing',            id: 'ph3' },
+        4: { label: 'Generating Report',               id: 'ph4' },
+    };
+    const currentPhase = state.phase || 1;
+    document.getElementById('phaseLabel').textContent =
+        state.phaseName || phaseMap[currentPhase]?.label || 'Scanning…';
+    [1,2,3,4].forEach(n => {
+        const el = document.getElementById('ph' + n);
+        if (!el) return;
+        el.classList.remove('active', 'done');
+        if (n < currentPhase)  el.classList.add('done');
+        if (n === currentPhase) el.classList.add('active');
+    });
+}
+
+function restoreLogUI(savedLogs) {
+    if (!savedLogs || !savedLogs.length) return;
+    const logEl = document.getElementById('scanLog');
+    logEl.innerHTML = '';
+    savedLogs.forEach(line => appendLog(line));
+}
+
+function appendLog(line) {
+    const logEl = document.getElementById('scanLog');
+    if (logEl.querySelector('.log-info')) logEl.innerHTML = '';
+    const span = document.createElement('span');
+    span.style.display = 'block';
+    if      (line.includes('❌') || line.includes('Error'))  span.style.color = '#f87171';
+    else if (line.includes('✅') || line.includes('done'))    span.style.color = '#34d399';
+    else if (line.includes('🚀') || line.includes('Phase'))   span.style.color = '#60a5fa';
+    else if (line.includes('🕷') || line.includes('Crawl'))   span.style.color = '#fbbf24';
+    else                                                       span.style.color = '#94a3b8';
+    span.textContent = line;
+    logEl.appendChild(span);
+    logEl.scrollTop  = logEl.scrollHeight;
+}
+
+function setScanRunningUI(target) {
+    document.getElementById('scanBtn').disabled             = true;
+    document.getElementById('btnIcon').textContent          = '⏳';
+    document.getElementById('btnText').textContent          = 'Scanning…';
+    document.getElementById('logStatus').textContent        = '🔴 Live';
+    document.getElementById('logStatus').style.color        = '#34d399';
+    document.getElementById('newScanBtn').style.display     = 'none';
+    document.getElementById('resultsSection').style.display = 'none';
+}
+
+function setScanIdleUI() {
+    document.getElementById('scanBtn').disabled         = false;
+    document.getElementById('btnIcon').textContent      = '🔍';
+    document.getElementById('btnText').textContent      = 'Start Comprehensive Scan';
+    document.getElementById('logStatus').textContent    = 'Idle';
+    document.getElementById('logStatus').style.color    = 'var(--text-muted)';
+    document.getElementById('newScanBtn').style.display = 'inline-flex';
+}
+
+let pollTimer   = null;
+let knownLogLen = 0;
+
+function startPolling() {
+    stopPolling();
+    knownLogLen = 0;
+    pollTimer = setInterval(pollScanState, 2000);
+    pollScanState();
+}
+
+function stopPolling() {
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+async function pollScanState() {
+    try {
+        const res  = await fetch('/api/scan-logs');
+        const data = await res.json();
+        const newLines = data.logs.slice(knownLogLen);
+        if (newLines.length) {
+            newLines.forEach(appendLog);
+            persistLogs(newLines);
+            knownLogLen = data.logs.length;
+            updatePhaseFromLogs(data.logs);
+        }
+        if (!data.running) {
+            stopPolling();
+            await onScanFinished();
+        }
+    } catch(e) {}
+}
+
+function updatePhaseFromLogs(logs) {
+    let phase = 1, phaseName = 'Network Security Testing', progress = 5;
+    logs.forEach(line => {
+        if (line.includes('PHASE 1') || line.includes('Network Security')) {
+            phase = 1; phaseName = 'Network Security Testing'; progress = 10;
+        }
+        if (line.includes('PHASE 2') || line.includes('Crawling') || line.includes('Starting crawler')) {
+            phase = 2; phaseName = 'Web Crawling & Path Discovery'; progress = 35;
+        }
+        if (line.includes('Crawl done') || line.includes('crawl_complete')) {
+            phase = 2; phaseName = 'Crawl Complete'; progress = 50;
+        }
+        if (line.includes('PHASE 3') || line.includes('OWASP')) {
+            phase = 3; phaseName = 'OWASP Top 10 Testing'; progress = 65;
+        }
+        if (line.includes('PHASE 4') || line.includes('Generating Report')) {
+            phase = 4; phaseName = 'Generating Report'; progress = 90;
+        }
+        if (line.includes('Scan complete') || line.includes('✅ Scan complete')) {
+            phase = 4; phaseName = 'Scan Complete'; progress = 100;
+        }
+    });
+    document.getElementById('progFill').style.width   = progress + '%';
+    document.getElementById('pctLabel').textContent   = progress + '%';
+    document.getElementById('phaseLabel').textContent = phaseName;
+    [1,2,3,4].forEach(n => {
+        const el = document.getElementById('ph' + n);
+        if (!el) return;
+        el.classList.remove('active', 'done');
+        if (n < phase)   el.classList.add('done');
+        if (n === phase) el.classList.add('active');
+    });
+    persistPhase(phase, phaseName, progress);
+}
+
+async function onScanFinished() {
+    try {
+        const res  = await fetch('/scan-status');
+        const data = await res.json();
+        if (data.status === 'success') {
+            persistScanComplete('completed');
+            setScanIdleUI();
+            document.getElementById('phaseLabel').textContent      = '✅ Scan Complete';
+            document.getElementById('pctLabel').textContent        = '100%';
+            document.getElementById('progFill').style.width        = '100%';
+            document.getElementById('testCoverageSection').style.display = 'block';
+            document.getElementById('resultsSection').style.display      = 'block';
+            if (typeof renderResults === 'function' && data.results) {
+                renderResults(data.results);
+            }
+        } else if (data.status === 'error') {
+            persistScanComplete('error');
+            setScanIdleUI();
+            document.getElementById('phaseLabel').textContent = '❌ Scan Failed';
+        }
+    } catch(e) {}
+}
+
+// ══════════════════════════════════════════════════════════════
+//  PAGE INIT — reconnect on load
+// ══════════════════════════════════════════════════════════════
+async function initScanPage() {
+    let saved;
+    try { saved = JSON.parse(localStorage.getItem(SCAN_KEY)); } catch(e) {}
+
+    if (!saved) return;   // No saved state — fresh page
+
+    if (saved.status === 'running') {
+        // Always restore form fields for running scans
+        restoreFormConfig(saved);
+
+        // Check if backend still has a running scan
+        try {
+            const res  = await fetch('/api/scan-logs');
+            const data = await res.json();
+
+            if (data.running) {
+                // ✅ Scan IS still running — reconnect fully
+                const savedLogs = JSON.parse(localStorage.getItem(SCAN_LOG_KEY) || '[]');
+                restoreLogUI(savedLogs);
+                knownLogLen = savedLogs.length;
+                restoreProgressUI(saved);
+                setScanRunningUI(saved.target);
+                showReconnectBanner(saved.target);
+                startPolling();
+            } else {
+                // Backend finished while we were away — clear and show fresh page
+                clearScanState();
+            }
+        } catch(e) {
+            // Backend unreachable — show last known state
+            restoreProgressUI(saved);
+            const savedLogs = JSON.parse(localStorage.getItem(SCAN_LOG_KEY) || '[]');
+            restoreLogUI(savedLogs);
+        }
+
+    } else if (saved.status === 'completed' || saved.status === 'error') {
+        // Scan is done — clear everything so the page loads fresh and empty
+        clearScanState();
+    }
+}
+
+function showReconnectBanner(target) {
+    const existing = document.getElementById('reconnectBanner');
+    if (existing) return;
+    const banner = document.createElement('div');
+    banner.id = 'reconnectBanner';
+    banner.style.cssText = [
+        'background:#1e3a5f', 'border:1px solid #3b82f6', 'border-radius:9px',
+        'padding:.625rem 1rem', 'margin-bottom:.875rem', 'font-size:.8rem',
+        'color:#93c5fd', 'display:flex', 'align-items:center', 'gap:.5rem'
+    ].join(';');
+    banner.innerHTML = `
+        <i class="fa-solid fa-rotate fa-spin" style="color:#60a5fa;flex-shrink:0;"></i>
+        <span>Reconnected to active scan: <strong style="color:#fff">${target}</strong></span>
+        <span style="margin-left:auto;font-size:.7rem;color:#64748b;">Refresh-safe ✓</span>`;
+    const content = document.querySelector('.content');
+    const g2      = content.querySelector('.g2');
+    if (g2) content.insertBefore(banner, g2);
+}
+
+const _origHandleScan = typeof handleScan === 'function' ? handleScan : null;
+
+window.handleScan = async function() {
+    const target    = document.getElementById('targetInput').value.trim();
+    const { loginType, authData } = readFormConfig();
+    if (!target) {
+        if (_origHandleScan) return _origHandleScan();
+        return;
+    }
+    persistScanConfig(target, loginType, authData);
+    history.replaceState({}, '', '/scanning');
+    setScanRunningUI(target);
+    startPolling();
+    if (_origHandleScan) {
+        _origHandleScan();
+    }
+};
+
+const _origHandleNewScan = typeof handleNewScan === 'function' ? handleNewScan : null;
+window.handleNewScan = function() {
+    clearScanState();
+    stopPolling();
+    knownLogLen = 0;
+    if (_origHandleNewScan) _origHandleNewScan();
+};
+
+initScanPage();
 </script>
 {% endblock %}

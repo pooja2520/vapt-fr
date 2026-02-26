@@ -23,10 +23,6 @@ USERS = {
     },
 }
 
-# ─────────────────────────────────────────────
-#  LIVE DATA STORE  (in-memory, persists per run)
-# ─────────────────────────────────────────────
-# Targets: { id -> {id, name, url, type, status, last_scan, vuln_counts} }
 targets_store = {}
 targets_counter = [0]
 
@@ -46,7 +42,15 @@ dashboard_stats = {
 scan_results = {}
 auth_sessions = {}
 update_queue = queue.Queue()
-active_scan = {'running': False, 'target': '', 'logs': []}
+active_scan = {
+    'running':    False,
+    'target':     '',
+    'logs':       [],
+    'phase':      0,       # 1-4
+    'phase_name': '',      # human label
+    'progress':   0,       # 0-100
+    'started_at': None,    # ISO timestamp
+}
 
 
 # ─────────────────────────────────────────────
@@ -495,9 +499,13 @@ def api_report_detail(report_id):
 def api_scan_logs():
     """Return all accumulated logs for the current or last scan."""
     return jsonify({
-        'running': active_scan['running'],
-        'target': active_scan['target'],
-        'logs': active_scan['logs'],
+        'running':    active_scan['running'],
+        'target':     active_scan['target'],
+        'logs':       active_scan['logs'],
+        'phase':      active_scan.get('phase', 0),
+        'phase_name': active_scan.get('phase_name', ''),
+        'progress':   active_scan.get('progress', 0),
+        'started_at': active_scan.get('started_at', None),
     })
 
 
@@ -509,6 +517,10 @@ def api_reset_scan():
         scan_results.clear()
         active_scan['logs'] = []
         active_scan['target'] = ''
+        active_scan['phase'] = 0
+        active_scan['phase_name'] = ''
+        active_scan['progress'] = 0
+        active_scan['started_at'] = None
     return jsonify({'status': 'ok', 'running': active_scan['running']})
 
 
@@ -682,6 +694,10 @@ def scan():
         active_scan['running'] = True
         active_scan['target'] = target
         active_scan['logs'] = []
+        active_scan['phase'] = 1
+        active_scan['phase_name'] = 'Network Security Testing'
+        active_scan['progress'] = 5
+        active_scan['started_at'] = datetime.now().isoformat()
         scan_results.clear()
 
         while not update_queue.empty():
@@ -689,6 +705,11 @@ def scan():
                 update_queue.get_nowait()
             except queue.Empty:
                 break
+
+        def update_phase(phase_num, phase_name, progress_pct):
+            active_scan['phase']      = phase_num
+            active_scan['phase_name'] = phase_name
+            active_scan['progress']   = progress_pct
 
         def run_scan():
             import time as _time
@@ -703,10 +724,21 @@ def scan():
                     if isinstance(msg, dict):
                         mtype = msg.get('type', '')
                         if mtype == 'phase':
-                            log(f"📋 Phase {msg.get('phase')}: {msg.get('name')}")
+                            phase_num = msg.get('phase', 1)
+                            name      = msg.get('name', '')
+                            # Map phase number to progress percentage
+                            progress_map = {1: 10, 2: 35, 3: 65, 4: 90}
+                            update_phase(phase_num, name, progress_map.get(phase_num, 10))
+                            log(f"📋 Phase {phase_num}: {name}")
                         elif mtype == 'crawling':
-                            log(f"🕷️ Crawling [{msg.get('count')}/{msg.get('total')}]: {msg.get('url')}")
+                            count = msg.get('count', 0)
+                            total = msg.get('total', 50)
+                            # Progress within phase 2: 35% to 50%
+                            crawl_pct = 35 + int((count / max(total, 1)) * 15)
+                            active_scan['progress'] = crawl_pct
+                            log(f"🕷️ Crawling [{count}/{total}]: {msg.get('url')}")
                         elif mtype == 'crawl_complete':
+                            update_phase(2, 'Crawl Complete', 50)
                             log(f"✅ Crawl done — {msg.get('total_paths')} paths from {msg.get('pages_crawled')} pages")
                         elif mtype == 'crawl_start':
                             log(f"🕷️ Starting crawler (max {msg.get('max_pages')} pages)...")
@@ -805,6 +837,8 @@ def scan():
                 scan_results['last_error'] = str(e)
                 log(f"❌ Error: {str(e)}")
             finally:
+                active_scan['progress'] = 100
+                active_scan['phase']    = 4
                 active_scan['running'] = False
 
         t = threading.Thread(target=run_scan)
