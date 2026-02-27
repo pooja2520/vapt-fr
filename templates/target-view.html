@@ -429,16 +429,13 @@ async function loadTarget(){
           const hasPath = v.path && v.path !== 'N/A' && v.path !== '—' && v.path.trim() !== '';
           const displayPath = hasPath ? v.path : (t.url || '—');
           const shortPath = displayPath.replace(/https?:\/\//, '');
-          const pathColor = hasPath ? 'var(--blue)' : 'var(--text-muted)';
           return `
           <tr>
             <td><strong>${v.test}</strong><br><small style="color:var(--text-muted);">${(v.finding||'').slice(0,90)}${v.finding&&v.finding.length>90?'…':''}</small></td>
             <td>${sevBadge(v.severity)}</td>
             <td>${statusBadge(v.status)}</td>
             <td>
-              <span style="display:inline-flex;align-items:center;font-size:.74rem;color:${pathColor};max-width:200px;">
-                <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${displayPath}">${shortPath}</span>
-              </span>
+              <span style="display:block;font-size:.74rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;" title="${displayPath}">${shortPath}</span>
             </td>
             <td><a href="/vulnerabilities" class="btn btn-o btn-s"><i class="fa-regular fa-eye"></i></a></td>
           </tr>`}).join('');
