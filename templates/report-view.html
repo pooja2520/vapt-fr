@@ -284,9 +284,8 @@ async function loadReport() {
                     <td style="font-size:.72rem;color:var(--text-muted)">${owasp}</td>
                     <td><span class="bx ${stClass(st)}"><i class="fa-solid ${st.toLowerCase()==='vulnerable'?'fa-circle-exclamation':st.toLowerCase()==='fixed'?'fa-circle-check':st.toLowerCase()==='error'?'fa-circle-xmark':'fa-circle-check'}"></i> ${st}</span></td>
                     <td style="max-width:180px;">
-                        <span title="${path}" style="font-size:.74rem;color:var(--text-muted);display:flex;align-items:center;gap:.25rem;">
-                            <i class="fa-solid fa-link" style="font-size:.6rem;flex-shrink:0;color:var(--border);"></i>
-                            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${short}</span>
+                        <span title="${path}" style="font-size:.74rem;color:var(--text);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                            ${short}
                         </span>
                     </td>
                 </tr>`;
