@@ -89,8 +89,7 @@ function renderTargets(targets) {
         const tCls = typeClass(t.type);
         const tIco = typeIcon(t.type);
 
-        // Status: derive from scan state — Completed, Scanning, Pending, Active
-        const rawStatus = (t.status || '').toLowerCase();
+        const rawStatus  = (t.status || '').toLowerCase();
         const scanStatus = (t.scan_status || '').toLowerCase();
         let stCls, stIco, stLbl;
         if (scanStatus === 'running' || scanStatus === 'scanning') {
@@ -100,10 +99,8 @@ function renderTargets(targets) {
         } else if (scanStatus === 'pending' || rawStatus === 'pending') {
             stCls = 'bpd'; stIco = 'fa-clock'; stLbl = 'Pending';
         } else if (t.last_scan && t.last_scan !== 'Never') {
-            // Has been scanned — show Completed
             stCls = 'bcp'; stIco = 'fa-circle-check'; stLbl = 'Completed';
         } else {
-            // Never scanned — Pending
             stCls = 'bpd'; stIco = 'fa-clock'; stLbl = 'Pending';
         }
 
@@ -132,9 +129,9 @@ function renderTargets(targets) {
             <td><span class="bx ${stCls}"><i class="fa-solid ${stIco}"></i> ${stLbl}</span></td>
             <td>${badgesHtml}</td>
             <td>
-                <a href="/targets/${t.id}/view"  class="btn btn-o btn-s" title="View"><i class="fa-regular fa-eye"></i></a>
-                <a href="/scanning?url=${encodeURIComponent(t.url)}&autostart=1" class="btn btn-p btn-s" title="Scan this target"><i class="fa-solid fa-play"></i></a>
-                <a href="/targets/${t.id}/edit"  class="btn btn-o btn-s" title="Edit"><i class="fa-regular fa-pen-to-square"></i></a>
+                <a href="/targets/${t.id}/view" class="btn btn-o btn-s" title="View"><i class="fa-regular fa-eye"></i></a>
+                <button class="btn btn-p btn-s" onclick="scanTarget(${t.id})" title="Scan this target"><i class="fa-solid fa-play"></i></button>
+                <a href="/targets/${t.id}/edit" class="btn btn-o btn-s" title="Edit"><i class="fa-regular fa-pen-to-square"></i></a>
                 <button class="btn btn-d btn-s" onclick="deleteTarget(${t.id}, this)" title="Delete"><i class="fa-regular fa-trash-can"></i></button>
             </td>
         </tr>`;
@@ -162,7 +159,41 @@ async function deleteTarget(id, btn) {
     } catch (e) { alert('Delete failed: ' + e.message); }
 }
 
+// ── Scan button: fetch full target details (including auth_config),
+//    write prefill to localStorage, navigate to scanning page ──────
+async function scanTarget(id) {
+    try {
+        const res  = await fetch(`/api/targets/${id}`);
+        const data = await res.json();
+
+        if (data.status !== 'ok') {
+            alert('Could not load target details.');
+            return;
+        }
+
+        const t          = data.target;
+        const authConfig = t.auth_config || { type: 'none' };
+
+        const prefill = {
+            target:    t.url,
+            loginType: authConfig.type || 'none',
+            authData:  authConfig,
+        };
+
+        localStorage.setItem('vapt_prefill', JSON.stringify(prefill));
+        window.location.href = '/scanning?autostart=1';
+
+    } catch(e) {
+        // Fallback: no auth info, just prefill URL
+        const target = allTargets.find(t => t.id === id);
+        if (target) {
+            localStorage.setItem('vapt_prefill', JSON.stringify({ target: target.url, loginType: 'none', authData: {} }));
+            window.location.href = '/scanning?autostart=1';
+        }
+    }
+}
+
 loadTargets();
-setInterval(loadTargets, 5000); // live updates every 5s
+setInterval(loadTargets, 5000);
 </script>
 {% endblock %}
