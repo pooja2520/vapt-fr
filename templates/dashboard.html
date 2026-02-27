@@ -374,15 +374,22 @@ async function loadDashboard() {
         // Recent findings
         const tbody = document.getElementById('recentBody');
         if (data.recent_vulnerabilities && data.recent_vulnerabilities.length) {
-            tbody.innerHTML = data.recent_vulnerabilities.map(v => {
+            const _sevOrd = {critical:0, high:1, medium:2, low:3, info:4};
+            const _sorted = [...data.recent_vulnerabilities].sort((a,b) =>
+                (_sevOrd[(a.severity||'info').toLowerCase()] ?? 4) -
+                (_sevOrd[(b.severity||'info').toLowerCase()] ?? 4)
+            );
+            tbody.innerHTML = _sorted.map(v => {
                 const sev  = (v.severity||'info').toLowerCase();
-                const stCl = (v.status||'').toLowerCase()==='vulnerable' ? 'bc' : 'bac';
+                const st = (v.status||'').toLowerCase();
+                const stCl  = st==='vulnerable' ? 'bc' : (st==='fixed' ? 'bac' : 'bac');
+                const stIco = st==='vulnerable' ? 'fa-circle-exclamation' : (st==='fixed' ? 'fa-rotate-left' : 'fa-circle-check');
                 const host = v.target ? v.target.replace(/https?:\/\//,'').split('/')[0] : '—';
                 return `<tr>
                   <td><strong>${v.test}</strong><br><small style="color:var(--text-muted)">${(v.finding||'').substring(0,80)}${v.finding&&v.finding.length>80?'...':''}</small></td>
                   <td>${mkBadge(sev)}</td>
                   <td style="font-size:.78rem">${host}</td>
-                  <td><span class="bx ${stCl}">${v.status}</span></td>
+                  <td><span class="bx ${stCl}"><i class="fa-solid ${stIco}"></i> ${v.status}</span></td>
                 </tr>`;
             }).join('');
         } else {
