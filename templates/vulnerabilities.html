@@ -27,7 +27,7 @@
 /* ── Charts Row ────────────────────────────────── */
 .charts-row{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1rem;min-width:0;}
 .chart-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:1rem;min-width:0;overflow:hidden;}
-.chart-card .ch{font-size:.8rem;font-weight:700;color:var(--text);margin-bottom:.75rem;display:flex;align-items:center;gap:.5rem;}
+.chart-card .ch{font-size:.8rem;font-weight:700;color:#fff;margin-bottom:.75rem;display:flex;align-items:center;gap:.5rem;}
 .chart-wrap{position:relative;height:220px;width:100%;min-width:0;overflow:hidden;}
 @media(max-width:1100px){.chart-wrap{height:200px;}}
 @media(max-width:900px){.charts-row{grid-template-columns:1fr;}.chart-wrap{height:220px;}}
@@ -115,11 +115,11 @@
   <!-- Charts -->
   <div class="charts-row">
     <div class="chart-card">
-      <div class="ch"><i class="fa-solid fa-chart-pie" style="color:var(--blue)"></i> Severity Distribution</div>
+      <div class="ch"><i class="fa-solid fa-chart-pie" style="color:#fff"></i> Severity Distribution</div>
       <div class="chart-wrap"><canvas id="chartPie"></canvas></div>
     </div>
     <div class="chart-card">
-      <div class="ch"><i class="fa-solid fa-chart-bar" style="color:var(--blue)"></i> Vulnerabilities per Scan</div>
+      <div class="ch"><i class="fa-solid fa-chart-bar" style="color:#fff"></i> Vulnerabilities per Scan</div>
       <div class="chart-wrap"><canvas id="chartBar"></canvas></div>
     </div>
   </div>
