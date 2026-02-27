@@ -64,7 +64,6 @@
     <div class="card">
       <div class="ch"><i class="fa-solid fa-spinner"></i> Scan Progress</div>
       <div class="cb">
-        <!-- Progress bar -->
         <div class="scan-progress">
           <div style="display:flex;justify-content:space-between;align-items:center;">
             <span id="phaseLabel" style="font-size:.82rem;font-weight:600;color:var(--text);">Ready</span>
@@ -72,16 +71,12 @@
           </div>
           <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
         </div>
-
-        <!-- Phase indicators -->
         <div class="phase-grid">
           <div class="phase" id="ph1"><i class="fa-solid fa-network-wired"></i>Recon</div>
           <div class="phase" id="ph2"><i class="fa-solid fa-shield-halved"></i>Headers</div>
           <div class="phase" id="ph3"><i class="fa-solid fa-magnifying-glass"></i>Crawl</div>
           <div class="phase" id="ph4"><i class="fa-solid fa-bug"></i>Vulnerability</div>
         </div>
-
-        <!-- Live scan logs terminal -->
         <div class="card" style="margin-top:.875rem;margin-bottom:0;">
           <div class="ch" style="padding:.5rem .875rem;font-size:.8rem;display:flex;justify-content:space-between;align-items:center;">
             <span><i class="fa-regular fa-file-lines"></i> Scan Logs</span>
@@ -96,7 +91,7 @@
     </div>
   </div>
 
-  <!-- Test Coverage (shown after scan) -->
+  <!-- Test Coverage -->
   <div id="testCoverageSection" style="display:none;">
     <div class="card">
       <div class="ch"><i class="fa-solid fa-list-check"></i> Test Coverage</div>
@@ -104,7 +99,7 @@
     </div>
   </div>
 
-  <!-- Results (shown after scan) -->
+  <!-- Results -->
   <div id="resultsSection" style="display:none;">
     <div class="card">
       <div class="ch"><i class="fa-solid fa-bug"></i> Scan Results</div>
@@ -161,32 +156,31 @@
 initLayout('/scanning');
 document.getElementById('testAuthBtn').addEventListener('click', handleTestAuth);
 
-const SCAN_KEY     = 'vapt_active_scan';
-const SCAN_LOG_KEY = 'vapt_scan_logs';
+// ═══════════════════════════════════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════════════════════════════════
+const SCAN_KEY       = 'vapt_active_scan';
+const SCAN_LOG_KEY   = 'vapt_scan_logs';
 const SCAN_PHASE_KEY = 'vapt_scan_phase';
+const PREFILL_KEY    = 'vapt_prefill';     // set by targets.html / target-create.html
 
+// ═══════════════════════════════════════════════════════════════
+//  PERSISTENCE HELPERS
+// ═══════════════════════════════════════════════════════════════
 function persistScanConfig(target, loginType, authData) {
-    const state = {
-        target,
-        loginType,
-        authData,
-        startedAt: Date.now(),
-        status: 'running',
-        phase: 1,
-        phaseName: 'Network Security Testing',
-        progress: 0,
-    };
-    localStorage.setItem(SCAN_KEY, JSON.stringify(state));
+    localStorage.setItem(SCAN_KEY, JSON.stringify({
+        target, loginType, authData,
+        startedAt: Date.now(), status: 'running',
+        phase: 1, phaseName: 'Network Security Testing', progress: 0,
+    }));
     localStorage.setItem(SCAN_LOG_KEY, JSON.stringify([]));
 }
 
 function persistPhase(phase, name, progress) {
     try {
-        const state = JSON.parse(localStorage.getItem(SCAN_KEY) || '{}');
-        state.phase    = phase;
-        state.phaseName = name;
-        state.progress  = progress;
-        localStorage.setItem(SCAN_KEY, JSON.stringify(state));
+        const s = JSON.parse(localStorage.getItem(SCAN_KEY) || '{}');
+        s.phase = phase; s.phaseName = name; s.progress = progress;
+        localStorage.setItem(SCAN_KEY, JSON.stringify(s));
     } catch(e) {}
 }
 
@@ -194,18 +188,17 @@ function persistLogs(lines) {
     try {
         const logs = JSON.parse(localStorage.getItem(SCAN_LOG_KEY) || '[]');
         lines.forEach(l => { if (!logs.includes(l)) logs.push(l); });
-        const trimmed = logs.slice(-500);
-        localStorage.setItem(SCAN_LOG_KEY, JSON.stringify(trimmed));
+        localStorage.setItem(SCAN_LOG_KEY, JSON.stringify(logs.slice(-500)));
     } catch(e) {}
 }
 
 function persistScanComplete(status) {
     try {
-        const state = JSON.parse(localStorage.getItem(SCAN_KEY) || '{}');
-        state.status    = status;
-        state.progress  = status === 'completed' ? 100 : state.progress;
-        state.finishedAt = Date.now();
-        localStorage.setItem(SCAN_KEY, JSON.stringify(state));
+        const s = JSON.parse(localStorage.getItem(SCAN_KEY) || '{}');
+        s.status = status;
+        s.progress = status === 'completed' ? 100 : s.progress;
+        s.finishedAt = Date.now();
+        localStorage.setItem(SCAN_KEY, JSON.stringify(s));
     } catch(e) {}
 }
 
@@ -215,6 +208,9 @@ function clearScanState() {
     localStorage.removeItem(SCAN_PHASE_KEY);
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  FORM HELPERS
+// ═══════════════════════════════════════════════════════════════
 function readFormConfig() {
     const loginType = document.getElementById('loginType').value;
     const authData  = {};
@@ -235,56 +231,59 @@ function readFormConfig() {
 function restoreFormConfig(state) {
     if (!state) return;
     if (state.target) document.getElementById('targetInput').value = state.target;
+
     const lt = state.loginType || 'none';
-    document.getElementById('loginType').value = lt;
+    document.getElementById('loginType').value               = lt;
     document.getElementById('basicAuthFields').style.display = 'none';
     document.getElementById('formAuthFields').style.display  = 'none';
+    document.getElementById('testAuthBtn').style.display     = 'none';
+
     if (lt === 'basic') {
         document.getElementById('basicAuthFields').style.display = 'block';
-        if (state.testAuthBtn) document.getElementById('testAuthBtn').style.display = 'inline-flex';
+        document.getElementById('testAuthBtn').style.display     = 'inline-flex';
     } else if (lt === 'form') {
         document.getElementById('formAuthFields').style.display = 'block';
-        if (state.testAuthBtn) document.getElementById('testAuthBtn').style.display = 'inline-flex';
+        document.getElementById('testAuthBtn').style.display    = 'inline-flex';
     }
+
     const d = state.authData || {};
-    if (d.basicUsername)         document.getElementById('basicUsername').value         = d.basicUsername;
-    if (d.basicPassword)         document.getElementById('basicPassword').value         = d.basicPassword;
-    if (d.formLoginUrl)          document.getElementById('formLoginUrl').value          = d.formLoginUrl;
-    if (d.formUsername)          document.getElementById('formUsername').value          = d.formUsername;
-    if (d.formPassword)          document.getElementById('formPassword').value          = d.formPassword;
-    if (d.formUsernameField)     document.getElementById('formUsernameField').value     = d.formUsernameField;
-    if (d.formPasswordField)     document.getElementById('formPasswordField').value     = d.formPasswordField;
-    if (d.formSuccessIndicator)  document.getElementById('formSuccessIndicator').value  = d.formSuccessIndicator;
+    if (d.basicUsername)        document.getElementById('basicUsername').value        = d.basicUsername;
+    if (d.basicPassword)        document.getElementById('basicPassword').value        = d.basicPassword;
+    if (d.formLoginUrl)         document.getElementById('formLoginUrl').value         = d.formLoginUrl;
+    if (d.formUsername)         document.getElementById('formUsername').value         = d.formUsername;
+    if (d.formPassword)         document.getElementById('formPassword').value         = d.formPassword;
+    if (d.formUsernameField)    document.getElementById('formUsernameField').value    = d.formUsernameField;
+    if (d.formPasswordField)    document.getElementById('formPasswordField').value    = d.formPasswordField;
+    if (d.formSuccessIndicator) document.getElementById('formSuccessIndicator').value = d.formSuccessIndicator;
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  UI STATE HELPERS
+// ═══════════════════════════════════════════════════════════════
 function restoreProgressUI(state) {
     if (!state) return;
     const pct = state.progress || 0;
     document.getElementById('progFill').style.width = pct + '%';
     document.getElementById('pctLabel').textContent  = pct + '%';
     const phaseMap = {
-        1: { label: 'Network Security Testing',        id: 'ph1' },
-        2: { label: 'Web Crawling & Path Discovery',   id: 'ph2' },
-        3: { label: 'OWASP Top 10 Testing',            id: 'ph3' },
-        4: { label: 'Generating Report',               id: 'ph4' },
+        1: 'Network Security Testing', 2: 'Web Crawling & Path Discovery',
+        3: 'OWASP Top 10 Testing',     4: 'Generating Report',
     };
-    const currentPhase = state.phase || 1;
-    document.getElementById('phaseLabel').textContent =
-        state.phaseName || phaseMap[currentPhase]?.label || 'Scanning…';
+    const cp = state.phase || 1;
+    document.getElementById('phaseLabel').textContent = state.phaseName || phaseMap[cp] || 'Scanning…';
     [1,2,3,4].forEach(n => {
         const el = document.getElementById('ph' + n);
         if (!el) return;
         el.classList.remove('active', 'done');
-        if (n < currentPhase)  el.classList.add('done');
-        if (n === currentPhase) el.classList.add('active');
+        if (n < cp)  el.classList.add('done');
+        if (n === cp) el.classList.add('active');
     });
 }
 
 function restoreLogUI(savedLogs) {
     if (!savedLogs || !savedLogs.length) return;
-    const logEl = document.getElementById('scanLog');
-    logEl.innerHTML = '';
-    savedLogs.forEach(line => appendLog(line));
+    document.getElementById('scanLog').innerHTML = '';
+    savedLogs.forEach(appendLog);
 }
 
 function appendLog(line) {
@@ -299,10 +298,10 @@ function appendLog(line) {
     else                                                       span.style.color = '#94a3b8';
     span.textContent = line;
     logEl.appendChild(span);
-    logEl.scrollTop  = logEl.scrollHeight;
+    logEl.scrollTop = logEl.scrollHeight;
 }
 
-function setScanRunningUI(target) {
+function setScanRunningUI() {
     document.getElementById('scanBtn').disabled             = true;
     document.getElementById('btnIcon').textContent          = '⏳';
     document.getElementById('btnText').textContent          = 'Scanning…';
@@ -321,6 +320,9 @@ function setScanIdleUI() {
     document.getElementById('newScanBtn').style.display = 'inline-flex';
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  POLLING
+// ═══════════════════════════════════════════════════════════════
 let pollTimer   = null;
 let knownLogLen = 0;
 
@@ -346,34 +348,19 @@ async function pollScanState() {
             knownLogLen = data.logs.length;
             updatePhaseFromLogs(data.logs);
         }
-        if (!data.running) {
-            stopPolling();
-            await onScanFinished();
-        }
+        if (!data.running) { stopPolling(); await onScanFinished(); }
     } catch(e) {}
 }
 
 function updatePhaseFromLogs(logs) {
     let phase = 1, phaseName = 'Network Security Testing', progress = 5;
     logs.forEach(line => {
-        if (line.includes('PHASE 1') || line.includes('Network Security')) {
-            phase = 1; phaseName = 'Network Security Testing'; progress = 10;
-        }
-        if (line.includes('PHASE 2') || line.includes('Crawling') || line.includes('Starting crawler')) {
-            phase = 2; phaseName = 'Web Crawling & Path Discovery'; progress = 35;
-        }
-        if (line.includes('Crawl done') || line.includes('crawl_complete')) {
-            phase = 2; phaseName = 'Crawl Complete'; progress = 50;
-        }
-        if (line.includes('PHASE 3') || line.includes('OWASP')) {
-            phase = 3; phaseName = 'OWASP Top 10 Testing'; progress = 65;
-        }
-        if (line.includes('PHASE 4') || line.includes('Generating Report')) {
-            phase = 4; phaseName = 'Generating Report'; progress = 90;
-        }
-        if (line.includes('Scan complete') || line.includes('✅ Scan complete')) {
-            phase = 4; phaseName = 'Scan Complete'; progress = 100;
-        }
+        if (line.includes('PHASE 1') || line.includes('Network Security'))             { phase=1; phaseName='Network Security Testing';      progress=10; }
+        if (line.includes('PHASE 2') || line.includes('Crawling') || line.includes('Starting crawler')) { phase=2; phaseName='Web Crawling & Path Discovery'; progress=35; }
+        if (line.includes('Crawl done') || line.includes('crawl_complete'))            { phase=2; phaseName='Crawl Complete';                 progress=50; }
+        if (line.includes('PHASE 3') || line.includes('OWASP'))                        { phase=3; phaseName='OWASP Top 10 Testing';           progress=65; }
+        if (line.includes('PHASE 4') || line.includes('Generating Report'))            { phase=4; phaseName='Generating Report';              progress=90; }
+        if (line.includes('Scan complete') || line.includes('✅ Scan complete'))        { phase=4; phaseName='Scan Complete';                  progress=100; }
     });
     document.getElementById('progFill').style.width   = progress + '%';
     document.getElementById('pctLabel').textContent   = progress + '%';
@@ -395,14 +382,12 @@ async function onScanFinished() {
         if (data.status === 'success') {
             persistScanComplete('completed');
             setScanIdleUI();
-            document.getElementById('phaseLabel').textContent      = '✅ Scan Complete';
-            document.getElementById('pctLabel').textContent        = '100%';
-            document.getElementById('progFill').style.width        = '100%';
-            document.getElementById('testCoverageSection').style.display = 'block';
-            document.getElementById('resultsSection').style.display      = 'block';
-            if (typeof renderResults === 'function' && data.results) {
-                renderResults(data.results);
-            }
+            document.getElementById('phaseLabel').textContent               = '✅ Scan Complete';
+            document.getElementById('pctLabel').textContent                 = '100%';
+            document.getElementById('progFill').style.width                 = '100%';
+            document.getElementById('testCoverageSection').style.display    = 'block';
+            document.getElementById('resultsSection').style.display         = 'block';
+            if (typeof renderResults === 'function' && data.results) renderResults(data.results);
         } else if (data.status === 'error') {
             persistScanComplete('error');
             setScanIdleUI();
@@ -411,88 +396,104 @@ async function onScanFinished() {
     } catch(e) {}
 }
 
-// ══════════════════════════════════════════════════════════════
-//  PAGE INIT — reconnect on load
-// ══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+//  BANNERS
+// ═══════════════════════════════════════════════════════════════
+function showPrefillBanner(targetUrl) {
+    if (document.getElementById('prefillBanner')) return;
+    const banner = document.createElement('div');
+    banner.id = 'prefillBanner';
+    banner.style.cssText = 'background:#1a3326;border:1.5px solid #22c55e;border-radius:9px;padding:.625rem 1rem;margin-bottom:.875rem;font-size:.8rem;color:#86efac;display:flex;align-items:center;gap:.5rem;';
+    banner.innerHTML = `<i class="fa-solid fa-circle-check" style="color:#22c55e;flex-shrink:0;"></i>
+        <span>Target auto-filled: <strong style="color:#fff">${targetUrl}</strong></span>
+        <span style="margin-left:auto;font-size:.7rem;color:#64748b;">from Targets ✓</span>`;
+    const g2 = document.querySelector('.content .g2');
+    if (g2) g2.parentNode.insertBefore(banner, g2);
+}
+
+function showReconnectBanner(target) {
+    if (document.getElementById('reconnectBanner')) return;
+    const banner = document.createElement('div');
+    banner.id = 'reconnectBanner';
+    banner.style.cssText = 'background:#1e3a5f;border:1px solid #3b82f6;border-radius:9px;padding:.625rem 1rem;margin-bottom:.875rem;font-size:.8rem;color:#93c5fd;display:flex;align-items:center;gap:.5rem;';
+    banner.innerHTML = `<i class="fa-solid fa-rotate fa-spin" style="color:#60a5fa;flex-shrink:0;"></i>
+        <span>Reconnected to active scan: <strong style="color:#fff">${target}</strong></span>
+        <span style="margin-left:auto;font-size:.7rem;color:#64748b;">Refresh-safe ✓</span>`;
+    const g2 = document.querySelector('.content .g2');
+    if (g2) g2.parentNode.insertBefore(banner, g2);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PAGE INIT
+//  Priority:
+//    1. vapt_prefill present  → came from Targets / target-create
+//    2. active scan running   → reconnect
+//    3. completed / error     → clear, show fresh
+//    4. nothing               → fresh page
+// ═══════════════════════════════════════════════════════════════
 async function initScanPage() {
+    const autostart = new URLSearchParams(window.location.search).get('autostart') === '1';
+
+    // ── Priority 1: prefill from Targets page ─────────────────
+    let prefill;
+    try { prefill = JSON.parse(localStorage.getItem(PREFILL_KEY)); } catch(e) {}
+
+    if (prefill && prefill.target) {
+        localStorage.removeItem(PREFILL_KEY);   // consume once
+        clearScanState();                        // discard any stale scan
+        restoreFormConfig(prefill);
+        showPrefillBanner(prefill.target);
+        if (autostart) setTimeout(() => handleScan(), 300);
+        return;
+    }
+
+    // ── Priority 2 / 3: existing scan state ───────────────────
     let saved;
     try { saved = JSON.parse(localStorage.getItem(SCAN_KEY)); } catch(e) {}
-
-    if (!saved) return;   // No saved state — fresh page
+    if (!saved) return;
 
     if (saved.status === 'running') {
-        // Always restore form fields for running scans
         restoreFormConfig(saved);
-
-        // Check if backend still has a running scan
         try {
             const res  = await fetch('/api/scan-logs');
             const data = await res.json();
-
             if (data.running) {
-                // ✅ Scan IS still running — reconnect fully
                 const savedLogs = JSON.parse(localStorage.getItem(SCAN_LOG_KEY) || '[]');
                 restoreLogUI(savedLogs);
                 knownLogLen = savedLogs.length;
                 restoreProgressUI(saved);
-                setScanRunningUI(saved.target);
+                setScanRunningUI();
                 showReconnectBanner(saved.target);
                 startPolling();
             } else {
-                // Backend finished while we were away — clear and show fresh page
                 clearScanState();
             }
         } catch(e) {
-            // Backend unreachable — show last known state
             restoreProgressUI(saved);
-            const savedLogs = JSON.parse(localStorage.getItem(SCAN_LOG_KEY) || '[]');
-            restoreLogUI(savedLogs);
+            restoreLogUI(JSON.parse(localStorage.getItem(SCAN_LOG_KEY) || '[]'));
         }
-
     } else if (saved.status === 'completed' || saved.status === 'error') {
-        // Scan is done — clear everything so the page loads fresh and empty
         clearScanState();
     }
 }
 
-function showReconnectBanner(target) {
-    const existing = document.getElementById('reconnectBanner');
-    if (existing) return;
-    const banner = document.createElement('div');
-    banner.id = 'reconnectBanner';
-    banner.style.cssText = [
-        'background:#1e3a5f', 'border:1px solid #3b82f6', 'border-radius:9px',
-        'padding:.625rem 1rem', 'margin-bottom:.875rem', 'font-size:.8rem',
-        'color:#93c5fd', 'display:flex', 'align-items:center', 'gap:.5rem'
-    ].join(';');
-    banner.innerHTML = `
-        <i class="fa-solid fa-rotate fa-spin" style="color:#60a5fa;flex-shrink:0;"></i>
-        <span>Reconnected to active scan: <strong style="color:#fff">${target}</strong></span>
-        <span style="margin-left:auto;font-size:.7rem;color:#64748b;">Refresh-safe ✓</span>`;
-    const content = document.querySelector('.content');
-    const g2      = content.querySelector('.g2');
-    if (g2) content.insertBefore(banner, g2);
-}
-
-const _origHandleScan = typeof handleScan === 'function' ? handleScan : null;
+// ═══════════════════════════════════════════════════════════════
+//  WRAP handleScan / handleNewScan
+// ═══════════════════════════════════════════════════════════════
+const _origHandleScan    = typeof handleScan    === 'function' ? handleScan    : null;
+const _origHandleNewScan = typeof handleNewScan === 'function' ? handleNewScan : null;
 
 window.handleScan = async function() {
-    const target    = document.getElementById('targetInput').value.trim();
+    const target = document.getElementById('targetInput').value.trim();
     const { loginType, authData } = readFormConfig();
-    if (!target) {
-        if (_origHandleScan) return _origHandleScan();
-        return;
-    }
+    if (!target) { if (_origHandleScan) return _origHandleScan(); return; }
     persistScanConfig(target, loginType, authData);
     history.replaceState({}, '', '/scanning');
-    setScanRunningUI(target);
+    setScanRunningUI();
     startPolling();
-    if (_origHandleScan) {
-        _origHandleScan();
-    }
+    if (_origHandleScan) _origHandleScan();
 };
 
-const _origHandleNewScan = typeof handleNewScan === 'function' ? handleNewScan : null;
 window.handleNewScan = function() {
     clearScanState();
     stopPolling();
