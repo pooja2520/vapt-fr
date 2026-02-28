@@ -51,7 +51,6 @@
         <div id="progressMessage"    class="alert alert-info"    style="display:none;"><span class="alert-icon">⚙️</span><span id="progressText"></span></div>
 
         <div style="display:flex;gap:.625rem;flex-wrap:wrap;margin-top:.5rem;">
-          <button id="testAuthBtn" class="btn btn-o" style="display:none;"><i class="fa-solid fa-key"></i> Test Auth</button>
           <button id="scanBtn" onclick="handleScan()" class="btn btn-p" style="flex:1;justify-content:center;">
             <span id="btnIcon">🔍</span> <span id="btnText">Start Comprehensive Scan</span>
           </button>
@@ -154,7 +153,6 @@
 <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 <script>
 initLayout('/scanning');
-document.getElementById('testAuthBtn').addEventListener('click', handleTestAuth);
 
 // ═══════════════════════════════════════════════════════════════
 //  CONSTANTS
@@ -236,14 +234,11 @@ function restoreFormConfig(state) {
     document.getElementById('loginType').value               = lt;
     document.getElementById('basicAuthFields').style.display = 'none';
     document.getElementById('formAuthFields').style.display  = 'none';
-    document.getElementById('testAuthBtn').style.display     = 'none';
 
     if (lt === 'basic') {
         document.getElementById('basicAuthFields').style.display = 'block';
-        document.getElementById('testAuthBtn').style.display     = 'inline-flex';
     } else if (lt === 'form') {
         document.getElementById('formAuthFields').style.display = 'block';
-        document.getElementById('testAuthBtn').style.display    = 'inline-flex';
     }
 
     const d = state.authData || {};
@@ -479,6 +474,7 @@ async function initScanPage() {
 
 // ═══════════════════════════════════════════════════════════════
 //  WRAP handleScan / handleNewScan
+//  (persistence + polling layer; auth is handled inside script.js)
 // ═══════════════════════════════════════════════════════════════
 const _origHandleScan    = typeof handleScan    === 'function' ? handleScan    : null;
 const _origHandleNewScan = typeof handleNewScan === 'function' ? handleNewScan : null;
@@ -487,11 +483,17 @@ window.handleScan = async function() {
     const target = document.getElementById('targetInput').value.trim();
     const { loginType, authData } = readFormConfig();
     if (!target) { if (_origHandleScan) return _origHandleScan(); return; }
-    persistScanConfig(target, loginType, authData);
-    history.replaceState({}, '', '/scanning');
-    setScanRunningUI();
-    startPolling();
-    if (_origHandleScan) _origHandleScan();
+    // Auth test + scan is handled inside script.js handleScan.
+    // We persist config and set up polling after the original fires.
+    if (_origHandleScan) {
+        // Temporarily hook into scan launch: wait for it to finish auth, then persist & poll.
+        // We wrap by letting the original run (it awaits auth internally), then persist.
+        await _origHandleScan();
+        // After auth passed and scan launched, persist state and start polling
+        persistScanConfig(target, loginType, authData);
+        history.replaceState({}, '', '/scanning');
+        startPolling();
+    }
 };
 
 window.handleNewScan = function() {
