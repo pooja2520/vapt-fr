@@ -2,7 +2,6 @@
 const targetInput        = document.getElementById('targetInput');
 const loginType          = document.getElementById('loginType');
 const scanBtn            = document.getElementById('scanBtn');
-const testAuthBtn        = document.getElementById('testAuthBtn');
 const btnIcon            = document.getElementById('btnIcon');
 const btnText            = document.getElementById('btnText');
 const newScanBtn         = document.getElementById('newScanBtn');
@@ -83,26 +82,26 @@ function handleLoginTypeChange() {
     const type = loginType.value;
     basicAuthFields.style.display = 'none';
     formAuthFields.style.display  = 'none';
-    testAuthBtn.style.display     = 'none';
     hideAuthSuccess();
-    if (type === 'basic') { basicAuthFields.style.display = 'block'; testAuthBtn.style.display = 'inline-flex'; }
-    if (type === 'form')  { formAuthFields.style.display  = 'block'; testAuthBtn.style.display = 'inline-flex'; }
+    hideError();
+    if (type === 'basic') { basicAuthFields.style.display = 'block'; }
+    if (type === 'form')  { formAuthFields.style.display  = 'block'; }
+    // Update unified button label to reflect whether auth will be tested first
+    updateScanButton(false);
 }
 
-// ─── Test Auth ───────────────────────────────────────────────
-async function handleTestAuth() {
-    const target = targetInput.value.trim();
-    const type   = loginType.value;
-    if (!target)         { showError('Please enter a target URL first'); return; }
-    if (type === 'none') { showError('Please select an authentication method'); return; }
-    hideError(); hideAuthSuccess(); showProgress('🔍 Testing authentication...');
+// ─── Internal Auth Test (called automatically by handleScan) ─
+async function _runAuthTest(target, type) {
+    showProgress('🔐 Verifying credentials…');
     try {
         const res    = await fetch('/test-auth', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ target, auth_type: type, auth_data: collectAuthData() }) });
         const result = await res.json();
         hideProgress();
-        if (result.status === 'success') showAuthSuccess(result.message);
-        else showError(result.message);
-    } catch (e) { hideProgress(); showError('Authentication test failed: ' + e.message); }
+        return result; // { status: 'success'|'error', message: '...' }
+    } catch (e) {
+        hideProgress();
+        return { status: 'error', message: 'Auth test failed: ' + e.message };
+    }
 }
 
 function collectAuthData() {
@@ -126,11 +125,29 @@ function collectAuthData() {
 async function handleScan() {
     const target = targetInput.value.trim();
     if (!target) { showError('Please enter a target URL or IP address'); return; }
+    const type = loginType.value;
     hideError(); hideAuthSuccess();
 
+    // ── Step 1: If auth is configured, test it first ──────────
+    if (type !== 'none') {
+        updateScanButton('auth');   // show "Verifying…" state
+        const authResult = await _runAuthTest(target, type);
+        if (authResult.status !== 'success') {
+            // Auth failed — show error, reset button, abort scan
+            updateScanButton(false);
+            showError(authResult.message || 'Authentication failed. Please check your credentials.');
+            return;
+        }
+        // Auth passed — briefly show success before launching scan
+        showAuthSuccess('✅ ' + (authResult.message || 'Authentication successful') + ' — launching scan…');
+        await new Promise(r => setTimeout(r, 700));
+        hideAuthSuccess();
+    }
+
+    // ── Step 2: Launch scan ────────────────────────────────────
     isScanning = true; crawledPaths = [];
     updateScanButton(true);
-    newScanBtn.style.display = 'none';   // hide during scan
+    newScanBtn.style.display = 'none';
 
     resultsSection.style.display      = 'none';
     testCoverageSection.style.display = 'none';
@@ -139,7 +156,7 @@ async function handleScan() {
     appendLog('[--:--:--] 🚀 Scan initializing for ' + target);
 
     try {
-        const res    = await fetch('/scan', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ target, auth_type: loginType.value, auth_data: collectAuthData(), owasp_enabled: true }) });
+        const res    = await fetch('/scan', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ target, auth_type: type, auth_data: collectAuthData(), owasp_enabled: true }) });
         const result = await res.json();
         if (result.status === 'started') connectToProgressStream();
         else handleScanError(result.message || 'Scan failed to start');
@@ -389,14 +406,21 @@ async function handleNewScan() {
 }
 function handleDownload() { window.location.href = '/download'; }
 
-function updateScanButton(scanning) {
-    if (scanning) {
+function updateScanButton(state) {
+    // state: false = idle, 'auth' = verifying credentials, true = scanning
+    const hasAuth = loginType.value !== 'none';
+    if (state === 'auth') {
+        btnIcon.innerHTML   = '<span class="loading">🔐</span>';
+        btnText.textContent = 'Verifying credentials…';
+        scanBtn.disabled    = true;
+    } else if (state === true) {
         btnIcon.innerHTML   = '<span class="loading">⚙️</span>';
-        btnText.textContent = 'Scanning...';
+        btnText.textContent = 'Scanning…';
         scanBtn.disabled    = true;
     } else {
-        btnIcon.textContent = '🔍';
-        btnText.textContent = 'Start Comprehensive Scan';
+        // idle — label depends on whether auth is configured
+        btnIcon.textContent = hasAuth ? '🔐' : '🔍';
+        btnText.textContent = hasAuth ? 'Authenticate & Scan' : 'Start Comprehensive Scan';
         scanBtn.disabled    = false;
     }
 }
